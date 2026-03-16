@@ -13,7 +13,15 @@
     "build": "tsx script/build.ts",
     "start": "NODE_ENV=production node dist/index.cjs",
     "check": "tsc",
-    "db:push": "drizzle-kit push"
+    "db:push": "drizzle-kit push",
+    "lint": "npm run check",
+    "test": "tsx --test test/**/*.test.ts",
+    "coverage": "c8 --reporter=text --reporter=lcov tsx --test test/**/*.test.ts",
+    "doctor:mobile": "node script/retry-mobile-doctor.mjs",
+    "validate:mobile": "npm --prefix mobile run typecheck && npm run doctor:mobile && sh -lc 'cd mobile && npx expo export --platform all'",
+    "security:audit": "npm audit --omit=dev && npm --prefix mobile audit --omit=dev",
+    "security:scan": "trivy fs --scanners vuln,misconfig --severity HIGH,CRITICAL --ignore-unfixed --skip-dirs node_modules --skip-dirs dist --skip-dirs mobile/node_modules --skip-dirs mobile/dist . && gitleaks git --redact",
+    "validate": "npm run lint && npm test && npm run build && npm run validate:mobile && npm run security:audit"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -96,6 +104,7 @@
     "@types/ws": "^8.5.13",
     "@vitejs/plugin-react": "^5.0.4",
     "autoprefixer": "^10.4.21",
+    "c8": "^11.0.0",
     "drizzle-kit": "^0.31.4",
     "esbuild": "^0.25.0",
     "postcss": "^8.5.6",

@@ -346,3 +346,19 @@ Summary
 This project is an AI-native adaptive business platform designed for real-world execution. It combines operational workflows, modular architecture, assistant-driven interaction, and responsive usability into a single system intended for daily use. While its current focus is car rental operations, it is intentionally designed to expand into a broader personal and business operating system.
 
 Its main strength is not just that it includes AI, but that it is being built so the intelligence layer can live through the application while the application itself remains practical, stable, and useful on its own.
+
+Validation and Automation
+
+The repository now includes a repeatable production-readiness path:
+
+```bash
+npm run lint
+npm test
+npm run coverage
+npm run build
+npm run validate:mobile
+npm run security:audit
+npm run security:scan
+```
+
+GitHub Actions mirror the same flow with separate CI and security workflows so build, smoke tests, Expo validation, dependency audits, Trivy scanning, and Gitleaks checks run automatically on pushes and pull requests.

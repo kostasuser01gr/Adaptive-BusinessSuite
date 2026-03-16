@@ -3,6 +3,8 @@ dist
 .DS_Store
 .expo
 .expo-shared
+.nyc_output
+coverage
 .git.embedded-backup
 server/public
 vite.config.ts.*
