@@ -5,9 +5,15 @@ on:
   push:
     branches:
       - main
+      - "codex/**"
+      - "hotfix/**"
   pull_request:
   schedule:
     - cron: "0 6 * * 1"
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   scans:
@@ -44,7 +50,8 @@ jobs:
         run: |
           docker run --rm \
             -v "$PWD:/repo" \
-            aquasec/trivy:0.56.1 fs \
+            aquasec/trivy:0.58.2 fs \
+            --exit-code 1 \
             --severity HIGH,CRITICAL \
             --ignore-unfixed \
             --skip-dirs /repo/node_modules \
