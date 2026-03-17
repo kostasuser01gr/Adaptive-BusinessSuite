@@ -56,7 +56,7 @@ jobs:
         run: npm test
 
       - name: Integration tests
-        run: tsx --test test/storage.integration.test.ts
+        run: npx tsx --test test/storage.integration.test.ts
 
       - name: Coverage
         run: npm run coverage

@@ -21,7 +21,7 @@
     "validate:mobile": "npm --prefix mobile run typecheck && npm run doctor:mobile && sh -lc 'cd mobile && npx expo export --platform all'",
     "security:audit": "npm audit --omit=dev && npm --prefix mobile audit --omit=dev",
     "security:scan": "trivy fs --scanners vuln,misconfig --severity HIGH,CRITICAL --ignore-unfixed --skip-dirs node_modules --skip-dirs dist --skip-dirs mobile/node_modules --skip-dirs mobile/dist --skip-dirs nexus-os . && gitleaks git --redact",
-    "test:integration": "tsx --test test/storage.integration.test.ts",
+    "test:integration": "npx tsx --test test/storage.integration.test.ts",
     "test:e2e": "playwright test",
     "validate": "npm run lint && npm test && npm run build && npm run validate:mobile && npm run security:audit"
   },
