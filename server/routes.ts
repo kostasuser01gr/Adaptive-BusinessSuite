@@ -173,7 +173,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       maxAge: 30 * 24 * 60 * 60 * 1000,
       httpOnly: true,
       sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
+      // SESSION_COOKIE_SECURE=false lets the E2E test server (plain HTTP, compiled
+      // bundle) opt out of the Secure flag.  In real production the variable is
+      // absent so the cookie is always Secure.  NOTE: esbuild defines
+      // process.env.NODE_ENV="production" at build time, so we cannot rely on
+      // NODE_ENV for a runtime override in the compiled bundle.
+      secure: process.env.SESSION_COOKIE_SECURE !== "false",
     }
   }));
 

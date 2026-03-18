@@ -76,8 +76,18 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     qc.invalidateQueries({ queryKey: ['/api/suggestions'] });
   };
 
-  const login = async (username: string, password: string) => { await api.auth.login(username, password); qc.invalidateQueries(); };
-  const register = async (username: string, password: string, displayName?: string) => { await api.auth.register(username, password, displayName); qc.invalidateQueries(); };
+  const login = async (username: string, password: string) => {
+    const user = await api.auth.login(username, password);
+    // Populate the cache synchronously so ProtectedRoute sees isAuthenticated=true
+    // on the very next render, eliminating the redirect-to-/auth race condition.
+    qc.setQueryData(['/api/auth/me'], user);
+    qc.invalidateQueries();
+  };
+  const register = async (username: string, password: string, displayName?: string) => {
+    const user = await api.auth.register(username, password, displayName);
+    qc.setQueryData(['/api/auth/me'], user);
+    qc.invalidateQueries();
+  };
   const logout = async () => { await api.auth.logout(); qc.clear(); qc.invalidateQueries({ queryKey: ['/api/auth/me'] }); };
   const setMode = async (m: UserMode) => { await api.user.setMode(m); refetchAll(); };
   const removeModule = async (id: string) => { await api.modules.remove(id); qc.invalidateQueries({ queryKey: ['/api/modules'] }); };

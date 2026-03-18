@@ -33,6 +33,10 @@ export default defineConfig({
       PORT: "5000",
       DATABASE_URL: process.env.DATABASE_URL ?? "",
       SESSION_SECRET: process.env.SESSION_SECRET ?? "e2e-test-only-secret",
+      // Disable Secure cookie flag for the plain-HTTP test server.
+      // The production bundle hardcodes NODE_ENV=production at build time,
+      // so this separate runtime escape hatch is required.
+      SESSION_COOKIE_SECURE: "false",
     },
   },
 });
