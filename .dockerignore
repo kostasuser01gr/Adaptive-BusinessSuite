@@ -1,0 +1,16 @@
+node_modules
+dist
+.git
+.github
+coverage
+playwright-report
+test-results
+mobile/node_modules
+mobile/dist
+nexus-os
+.DS_Store
+*.log
+.env
+.env.local
+.env.*.local
+attached_assets

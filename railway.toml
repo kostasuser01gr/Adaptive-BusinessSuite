@@ -1,0 +1,27 @@
+# Railway deployment configuration for Nexus OS / Adaptive Business Suite.
+# The app is a single Node.js service that serves both the API and the
+# pre-built React client from dist/public.
+#
+# Required environment variables (set in Railway dashboard or via railway env):
+#   DATABASE_URL          – PostgreSQL connection string (from Railway Postgres plugin)
+#   SESSION_SECRET        – Long random string for express-session
+#
+# Optional environment variables:
+#   PORT                  – Defaults to 5000; Railway injects its own PORT automatically
+#   AI_PROVIDER           – "openai" | "none"  (default: "none")
+#   OPENAI_API_KEY        – Required when AI_PROVIDER=openai
+#   OPENAI_MODEL          – e.g. "gpt-4o-mini"  (default: "gpt-4o-mini")
+
+[build]
+# Let Railway's Nixpacks builder detect Node.js and run npm ci + npm run build
+builder = "NIXPACKS"
+
+[deploy]
+startCommand = "node dist/index.cjs"
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
+
+[[services]]
+name = "web"

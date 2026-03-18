@@ -362,3 +362,47 @@ npm run security:scan
 ```
 
 GitHub Actions mirror the same flow with separate CI and security workflows so build, smoke tests, Expo validation, dependency audits, Trivy scanning, and Gitleaks checks run automatically on pushes and pull requests.
+
+Deployment
+----------
+
+Railway (web backend)
+
+The repository ships a railway.toml and a multi-stage Dockerfile so the server can be deployed on Railway with zero extra config.
+
+Connect your GitHub repository in the Railway dashboard, add a PostgreSQL plugin, and set the following environment variables: DATABASE_URL (injected automatically by the plugin), SESSION_SECRET (generate with openssl rand -hex 64), AI_PROVIDER (openai or none, default is none), OPENAI_API_KEY (required when AI_PROVIDER is openai), OPENAI_MODEL (optional, defaults to gpt-4o-mini), and OPENAI_BASE_URL (optional override for OpenAI-compatible endpoints).
+
+Railway detects the Dockerfile automatically and starts the service. The health-check endpoint is /health. You can also deploy directly via the Railway CLI with railway up.
+
+Docker (self-hosted)
+
+Build and run the container locally:
+
+```bash
+docker build -t nexus-os .
+docker run -p 5000:5000 \
+  -e DATABASE_URL="postgresql://..." \
+  -e SESSION_SECRET="$(openssl rand -hex 64)" \
+  nexus-os
+```
+
+Mobile — EAS Build (iOS + Android)
+
+The mobile/eas.json file defines three build profiles: development (internal distribution, dev client with fast refresh), preview (internal APK or ad-hoc IPA for staging QA), and production (App Store and Play Store, auto-increments build number).
+
+Set EXPO_PUBLIC_API_URL in each profile or via EAS secrets to point the mobile app at your deployed backend, then run:
+
+```bash
+cd mobile
+eas build --profile production --platform all
+eas submit --platform all
+```
+
+Model Gateway
+-------------
+
+The server-side assistant is routed through a provider-agnostic gateway in server/model/index.ts.
+
+When AI_PROVIDER is set to none (the default) the gateway uses a deterministic rule-engine with no external API calls or API key requirement. The assistant always works in this mode and is suitable for production without a live model.
+
+When AI_PROVIDER is set to openai the gateway routes commands through OpenAI chat completions. If the API call fails it falls back to the deterministic engine automatically, so the assistant never goes dark. Any OpenAI-compatible endpoint is supported via the OPENAI_BASE_URL variable, which means local models such as Ollama or LM Studio work without code changes.

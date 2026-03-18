@@ -8,6 +8,7 @@ import { storage } from "./storage";
 import { insertUserSchema } from "@shared/schema";
 import MemoryStore from "memorystore";
 import { buildNexusUltraPayload } from "./nexus-ultra";
+import { processMessage, type AssistantContext } from "./model/index.js";
 
 // Separate limiters so the register counter and the login counter are independent.
 // Both: 20 attempts per IP per 15-minute window.
@@ -65,8 +66,9 @@ function toDateOrNull(value: unknown): Date | null | undefined {
 }
 
 type UserMode = 'rental' | 'personal' | 'professional' | 'custom';
+type DefaultModuleSpec = { type: string; title: string; w: string; h: string; data?: any };
 
-const defaultModules: Record<UserMode, { type: string; title: string; w: string; h: string; data?: any }[]> = {
+const defaultModules: Record<UserMode, DefaultModuleSpec[]> = {
   rental: [
     { type: 'daily-overview', title: 'Daily Overview', w: '4', h: '1' },
     { type: 'kpi', title: 'Active Rentals', w: '1', h: '1', data: { value: '0', label: 'Vehicles out', icon: 'car', color: 'blue' } },
@@ -95,73 +97,6 @@ const defaultModules: Record<UserMode, { type: string; title: string; w: string;
   ],
   custom: [],
 };
-
-function processAssistantCommand(command: string, context: { mode: string; moduleTypes: string[] }) {
-  const cmd = command.toLowerCase();
-  const result: any = { response: '', moduleToAdd: null, clearDashboard: false, switchMode: null, actions: null, memoryUpdate: null };
-
-  // Module additions
-  const moduleMap: Record<string, { type: string; title: string; w: string; h: string; data?: any }> = {
-    'budget': { type: 'budget', title: 'Budget Tracker', w: '2', h: '1' },
-    'fleet': { type: 'fleet', title: 'Fleet Overview', w: '2', h: '2' },
-    'notes': { type: 'notes', title: 'Quick Notes', w: '2', h: '2' },
-    'kpi': { type: 'kpi', title: 'KPI Widget', w: '1', h: '1', data: { value: '0', label: 'New Metric', icon: 'activity', color: 'blue' } },
-    'task': { type: 'tasks', title: 'Tasks', w: '2', h: '2' },
-    'calendar': { type: 'calendar', title: 'Calendar', w: '2', h: '2' },
-    'crm': { type: 'crm', title: 'CRM Contacts', w: '2', h: '1' },
-    'contact': { type: 'crm', title: 'CRM Contacts', w: '2', h: '1' },
-    'habit': { type: 'habits', title: 'Daily Habits', w: '1', h: '2' },
-    'booking': { type: 'bookings', title: 'Bookings', w: '2', h: '2' },
-    'maintenance': { type: 'maintenance', title: 'Maintenance Tracker', w: '2', h: '2' },
-    'financial': { type: 'financial', title: 'Financial Snapshot', w: '2', h: '1' },
-    'quick action': { type: 'quick-actions', title: 'Quick Actions', w: '2', h: '1' },
-    'overview': { type: 'daily-overview', title: 'Daily Overview', w: '4', h: '1' },
-    'checkin': { type: 'checkin', title: 'Check-In / Check-Out', w: '2', h: '2' },
-    'check-in': { type: 'checkin', title: 'Check-In / Check-Out', w: '2', h: '2' },
-  };
-
-  if (cmd.includes('add') || cmd.includes('create') || cmd.includes('new')) {
-    for (const [keyword, mod] of Object.entries(moduleMap)) {
-      if (cmd.includes(keyword)) {
-        result.moduleToAdd = mod;
-        result.response = `Added "${mod.title}" module to your dashboard.`;
-        result.memoryUpdate = { key: `last_added_module`, value: mod.type };
-        return result;
-      }
-    }
-  }
-
-  if (cmd.includes('remove all') || cmd.includes('clear') || cmd.includes('reset dashboard')) {
-    result.clearDashboard = true;
-    result.response = 'Dashboard cleared. Tell me what modules you want and I will build your ideal workspace.';
-    return result;
-  }
-
-  const modeMap: Record<string, UserMode> = { 'personal': 'personal', 'rental': 'rental', 'car': 'rental', 'professional': 'professional', 'work': 'professional' };
-  for (const [keyword, mode] of Object.entries(modeMap)) {
-    if (cmd.includes(keyword) && (cmd.includes('switch') || cmd.includes('mode') || cmd.includes('change'))) {
-      result.switchMode = mode;
-      result.response = `Switched to ${mode} mode. Dashboard has been reconfigured with ${mode} modules.`;
-      result.memoryUpdate = { key: 'preferred_mode', value: mode };
-      return result;
-    }
-  }
-
-  // Proactive suggestions based on context
-  const suggestions: string[] = [];
-  if (context.mode === 'rental') {
-    if (!context.moduleTypes.includes('fleet')) suggestions.push('Add Fleet Overview');
-    if (!context.moduleTypes.includes('bookings')) suggestions.push('Add Bookings');
-    if (!context.moduleTypes.includes('checkin')) suggestions.push('Add Check-In/Out');
-    if (!context.moduleTypes.includes('maintenance')) suggestions.push('Add Maintenance Tracker');
-  }
-  if (!context.moduleTypes.includes('tasks')) suggestions.push('Add Tasks');
-  if (!context.moduleTypes.includes('notes')) suggestions.push('Add Notes');
-
-  result.response = `I can customize your workspace in many ways. Try:\n• "Add [module name]" — fleet, bookings, tasks, notes, budget, calendar, CRM, maintenance, check-in, financial, KPI\n• "Switch to [mode]" — rental, personal, professional\n• "Clear dashboard" — start fresh\n\nI can also add custom KPI widgets, quick actions, and more.`;
-  result.actions = suggestions.slice(0, 4);
-  return result;
-}
 
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
   app.use(session({
@@ -296,7 +231,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const existingModules = await storage.getModulesByUser(userId);
     const moduleTypes = existingModules.map(m => m.type);
     const user = await storage.getUser(userId);
-    const result = processAssistantCommand(content, { mode: user?.mode || 'rental', moduleTypes });
+    const context: AssistantContext = { mode: user?.mode || 'rental', moduleTypes };
+    const result = await processMessage(content, context);
 
     let newModules: any[] = [];
     if (result.clearDashboard) {
