@@ -6,16 +6,33 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "./theme";
 import { useAppStore } from "../state/store";
-import { SplashGateScreen, LoginScreen, SignUpScreen, OnboardingScreen } from "../screens/auth";
+import {
+  SplashGateScreen,
+  LoginScreen,
+  SignUpScreen,
+  OnboardingScreen,
+} from "../screens/auth";
 import { DashboardScreen } from "../screens/dashboard";
 import { FleetScreen, VehicleDetailsScreen } from "../screens/fleet";
-import { BookingsScreen, BookingDetailsScreen, CheckFlowScreen } from "../screens/bookings";
+import {
+  BookingsScreen,
+  BookingDetailsScreen,
+  CheckFlowScreen,
+} from "../screens/bookings";
 import { CustomersScreen, CustomerDetailsScreen } from "../screens/customers";
 import { MaintenanceScreen } from "../screens/maintenance";
 import { TasksScreen, NotesScreen } from "../screens/tasksNotes";
-import { CalendarScreen, FinanceScreen, AlertsScreen } from "../screens/calendarFinance";
+import {
+  CalendarScreen,
+  FinanceScreen,
+  AlertsScreen,
+} from "../screens/calendarFinance";
 import { AssistantScreen } from "../screens/assistant";
-import { WorkspaceScreen, SettingsScreen, HistoryScreen } from "../screens/workspace";
+import {
+  WorkspaceScreen,
+  SettingsScreen,
+  HistoryScreen,
+} from "../screens/workspace";
 
 const RootStack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -42,7 +59,9 @@ function AppTabs() {
             Tasks: "checkbox",
             Assistant: "sparkles",
           };
-          return <Ionicons name={nameMap[route.name]} size={size} color={color} />;
+          return (
+            <Ionicons name={nameMap[route.name]} size={size} color={color} />
+          );
         },
       })}
     >
@@ -70,13 +89,17 @@ export const navigationTheme = {
 export function AppNavigator() {
   const hasHydrated = useAppStore((state) => state.hasHydrated);
   const activeUserId = useAppStore((state) => state.session.activeUserId);
-  const activeWorkspaceId = useAppStore((state) => state.session.activeWorkspaceId);
+  const activeWorkspaceId = useAppStore(
+    (state) => state.session.activeWorkspaceId,
+  );
   const users = useAppStore((state) => state.users);
   const workspaces = useAppStore((state) => state.workspaces);
 
   const activeUser = users.find((user) => user.id === activeUserId) || null;
   const needsOnboarding = activeUser && !activeUser.onboardingComplete;
-  const hasWorkspace = !!workspaces.find((workspace) => workspace.id === activeWorkspaceId);
+  const hasWorkspace = !!workspaces.find(
+    (workspace) => workspace.id === activeWorkspaceId,
+  );
 
   if (!hasHydrated) {
     return <SplashGateScreen />;
@@ -93,11 +116,23 @@ export function AppNavigator() {
     >
       {!activeUser ? (
         <>
-          <RootStack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
-          <RootStack.Screen name="SignUp" component={SignUpScreen} options={{ title: "Create account" }} />
+          <RootStack.Screen
+            name="Login"
+            component={LoginScreen}
+            options={{ headerShown: false }}
+          />
+          <RootStack.Screen
+            name="SignUp"
+            component={SignUpScreen}
+            options={{ title: "Create account" }}
+          />
         </>
       ) : needsOnboarding ? (
-        <RootStack.Screen name="Onboarding" component={OnboardingScreen} options={{ headerShown: false }} />
+        <RootStack.Screen
+          name="Onboarding"
+          component={OnboardingScreen}
+          options={{ headerShown: false }}
+        />
       ) : (
         <>
           <RootStack.Screen
@@ -116,10 +151,26 @@ export function AppNavigator() {
           <RootStack.Screen name="Settings" component={SettingsScreen} />
           <RootStack.Screen name="History" component={HistoryScreen} />
           <RootStack.Screen name="Alerts" component={AlertsScreen} />
-          <RootStack.Screen name="CheckFlow" component={CheckFlowScreen} options={{ title: "Quick Check-In / Out" }} />
-          <RootStack.Screen name="VehicleDetails" component={VehicleDetailsScreen} options={{ title: "Vehicle details" }} />
-          <RootStack.Screen name="CustomerDetails" component={CustomerDetailsScreen} options={{ title: "Customer details" }} />
-          <RootStack.Screen name="BookingDetails" component={BookingDetailsScreen} options={{ title: "Booking details" }} />
+          <RootStack.Screen
+            name="CheckFlow"
+            component={CheckFlowScreen}
+            options={{ title: "Quick Check-In / Out" }}
+          />
+          <RootStack.Screen
+            name="VehicleDetails"
+            component={VehicleDetailsScreen}
+            options={{ title: "Vehicle details" }}
+          />
+          <RootStack.Screen
+            name="CustomerDetails"
+            component={CustomerDetailsScreen}
+            options={{ title: "Customer details" }}
+          />
+          <RootStack.Screen
+            name="BookingDetails"
+            component={BookingDetailsScreen}
+            options={{ title: "Booking details" }}
+          />
           {!hasWorkspace ? (
             <RootStack.Screen
               name="WorkspaceBootstrap"
@@ -127,7 +178,9 @@ export function AppNavigator() {
               options={{
                 presentation: "modal",
                 title: "Choose a workspace",
-                headerRight: () => <Text style={{ color: theme.colors.primary }}>Setup</Text>,
+                headerRight: () => (
+                  <Text style={{ color: theme.colors.primary }}>Setup</Text>
+                ),
               }}
             />
           ) : null}

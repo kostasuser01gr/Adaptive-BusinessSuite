@@ -1,14 +1,15 @@
-import React from 'react';
-import { useAppState } from '@/lib/store';
-import Sidebar from './Sidebar';
-import AssistantChat from './AssistantChat';
-import CommandBar from './CommandBar';
-import MobileNav from './MobileNav';
-import { Search, Bell, Loader2, Command } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import React from "react";
+import { useAppState } from "@/lib/store";
+import Sidebar from "./Sidebar";
+import AssistantChat from "./AssistantChat";
+import CommandBar from "./CommandBar";
+import MobileNav from "./MobileNav";
+import { Search, Bell, Loader2, Command } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading, user, isChatOpen, setCommandBarOpen } = useAppState();
+  const { isAuthenticated, isLoading, user, isChatOpen, setCommandBarOpen } =
+    useAppState();
 
   if (isLoading) {
     return (
@@ -37,7 +38,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               data-testid="button-command-bar"
             >
               <Search className="h-3.5 w-3.5 text-muted-foreground" />
-              <span className="text-xs text-muted-foreground hidden sm:inline">Search or command...</span>
+              <span className="text-xs text-muted-foreground hidden sm:inline">
+                Search or command...
+              </span>
               <kbd className="hidden sm:inline-flex text-[10px] text-muted-foreground bg-black/30 border border-white/10 px-1 py-0.5 rounded ml-6">
                 <Command className="h-2.5 w-2.5 inline" />K
               </kbd>
@@ -45,12 +48,20 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="relative h-8 w-8" data-testid="button-notifications">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="relative h-8 w-8"
+              data-testid="button-notifications"
+            >
               <Bell className="h-4 w-4" />
               <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-primary rounded-full" />
             </Button>
-            <div className="h-7 w-7 rounded-full bg-primary/20 border border-primary/40 flex items-center justify-center text-primary text-xs font-semibold cursor-pointer" data-testid="button-avatar">
-              {user?.displayName?.charAt(0) || user?.username?.charAt(0) || 'U'}
+            <div
+              className="h-7 w-7 rounded-full bg-primary/20 border border-primary/40 flex items-center justify-center text-primary text-xs font-semibold cursor-pointer"
+              data-testid="button-avatar"
+            >
+              {user?.displayName?.charAt(0) || user?.username?.charAt(0) || "U"}
             </div>
           </div>
         </header>

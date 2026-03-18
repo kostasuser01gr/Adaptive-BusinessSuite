@@ -2,7 +2,13 @@ import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import type {
   NexusComplianceStatus,
   NexusGate,
@@ -48,7 +54,9 @@ function MetricCard({ metric }: { metric: NexusMetric }) {
         <CardTitle className="text-2xl font-heading">{metric.value}</CardTitle>
       </CardHeader>
       <CardContent>
-        <p className="text-xs leading-5 text-muted-foreground">{metric.detail}</p>
+        <p className="text-xs leading-5 text-muted-foreground">
+          {metric.detail}
+        </p>
       </CardContent>
     </Card>
   );
@@ -78,7 +86,10 @@ function GateGroup({
             <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
               <div>
                 <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="border-primary/20 bg-primary/10 text-primary">
+                  <Badge
+                    variant="outline"
+                    className="border-primary/20 bg-primary/10 text-primary"
+                  >
                     {gate.id}
                   </Badge>
                   <h3 className="text-sm font-medium">{gate.purpose}</h3>
@@ -89,15 +100,21 @@ function GateGroup({
               </div>
               <div className="grid grid-cols-3 gap-3 text-[11px] text-muted-foreground lg:min-w-[290px]">
                 <div>
-                  <p className="uppercase tracking-[0.18em] text-[10px] text-muted-foreground/70">Stack</p>
+                  <p className="uppercase tracking-[0.18em] text-[10px] text-muted-foreground/70">
+                    Stack
+                  </p>
                   <p className="mt-1 text-foreground">{gate.stack}</p>
                 </div>
                 <div>
-                  <p className="uppercase tracking-[0.18em] text-[10px] text-muted-foreground/70">SLA</p>
+                  <p className="uppercase tracking-[0.18em] text-[10px] text-muted-foreground/70">
+                    SLA
+                  </p>
                   <p className="mt-1 text-foreground">{gate.sla}</p>
                 </div>
                 <div>
-                  <p className="uppercase tracking-[0.18em] text-[10px] text-muted-foreground/70">Auto-Fix</p>
+                  <p className="uppercase tracking-[0.18em] text-[10px] text-muted-foreground/70">
+                    Auto-Fix
+                  </p>
                   <p className="mt-1 text-foreground">{gate.autoFix}</p>
                 </div>
               </div>
@@ -120,7 +137,9 @@ export default function NexusUltraPage() {
       <div className="max-w-7xl mx-auto">
         <Card className="border-white/10 bg-card/40 shadow-none">
           <CardContent className="p-6">
-            <p className="text-sm text-muted-foreground">Loading NEXUS ULTRA control plane...</p>
+            <p className="text-sm text-muted-foreground">
+              Loading NEXUS ULTRA control plane...
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -145,7 +164,10 @@ export default function NexusUltraPage() {
         <div className="absolute inset-y-0 right-0 hidden w-1/3 bg-[linear-gradient(135deg,transparent,rgba(255,255,255,0.06))] md:block" />
         <div className="relative flex flex-col gap-6">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline" className="border-primary/20 bg-primary/10 text-primary">
+            <Badge
+              variant="outline"
+              className="border-primary/20 bg-primary/10 text-primary"
+            >
               {data.product.name}
             </Badge>
             <Badge variant="outline" className="border-white/10 bg-white/5">
@@ -154,7 +176,10 @@ export default function NexusUltraPage() {
             <Badge variant="outline" className="border-white/10 bg-white/5">
               Release {data.product.releaseDate}
             </Badge>
-            <Badge variant="outline" className="border-emerald-500/20 bg-emerald-500/10 text-emerald-200">
+            <Badge
+              variant="outline"
+              className="border-emerald-500/20 bg-emerald-500/10 text-emerald-200"
+            >
               {data.product.status}
             </Badge>
           </div>
@@ -166,7 +191,10 @@ export default function NexusUltraPage() {
                   <Shield className="h-6 w-6 text-sky-200" />
                 </div>
                 <div>
-                  <h1 className="text-2xl font-heading font-bold tracking-tight md:text-4xl" data-testid="text-nexus-ultra-title">
+                  <h1
+                    className="text-2xl font-heading font-bold tracking-tight md:text-4xl"
+                    data-testid="text-nexus-ultra-title"
+                  >
                     {data.product.headline}
                   </h1>
                   <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">
@@ -193,16 +221,27 @@ export default function NexusUltraPage() {
                   <Sparkles className="h-4 w-4 text-primary" />
                   Executive Snapshot
                 </CardTitle>
-                <CardDescription>Current target posture modeled from the NEXUS ULTRA spec.</CardDescription>
+                <CardDescription>
+                  Current target posture modeled from the NEXUS ULTRA spec.
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 {data.executiveMetrics.slice(0, 4).map((metric) => (
-                  <div key={metric.label} className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3">
+                  <div
+                    key={metric.label}
+                    className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3"
+                  >
                     <div className="flex items-center justify-between gap-2">
-                      <p className="text-xs text-muted-foreground">{metric.label}</p>
-                      <span className="text-sm font-semibold">{metric.value}</span>
+                      <p className="text-xs text-muted-foreground">
+                        {metric.label}
+                      </p>
+                      <span className="text-sm font-semibold">
+                        {metric.value}
+                      </span>
                     </div>
-                    <p className="mt-2 text-[11px] leading-5 text-muted-foreground">{metric.detail}</p>
+                    <p className="mt-2 text-[11px] leading-5 text-muted-foreground">
+                      {metric.detail}
+                    </p>
                   </div>
                 ))}
               </CardContent>
@@ -220,17 +259,26 @@ export default function NexusUltraPage() {
       <section className="space-y-4">
         <div className="flex items-center gap-2">
           <Bot className="h-4 w-4 text-primary" />
-          <h2 className="text-lg font-heading font-semibold">Intelligence Layer</h2>
+          <h2 className="text-lg font-heading font-semibold">
+            Intelligence Layer
+          </h2>
         </div>
         <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
           {data.intelligence.map((program) => (
-            <Card key={program.title} className="border-white/10 bg-card/40 shadow-none">
+            <Card
+              key={program.title}
+              className="border-white/10 bg-card/40 shadow-none"
+            >
               <CardHeader>
-                <CardTitle className="text-base font-heading">{program.title}</CardTitle>
+                <CardTitle className="text-base font-heading">
+                  {program.title}
+                </CardTitle>
                 <CardDescription>{program.summary}</CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-xs leading-6 text-muted-foreground">{program.automation}</p>
+                <p className="text-xs leading-6 text-muted-foreground">
+                  {program.automation}
+                </p>
               </CardContent>
             </Card>
           ))}
@@ -240,13 +288,20 @@ export default function NexusUltraPage() {
       <section className="space-y-4">
         <div className="flex items-center gap-2">
           <Activity className="h-4 w-4 text-primary" />
-          <h2 className="text-lg font-heading font-semibold">Control Plane Architecture</h2>
+          <h2 className="text-lg font-heading font-semibold">
+            Control Plane Architecture
+          </h2>
         </div>
         <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-5">
           {data.architecture.map((layer) => (
-            <Card key={layer.title} className="border-white/10 bg-card/40 shadow-none">
+            <Card
+              key={layer.title}
+              className="border-white/10 bg-card/40 shadow-none"
+            >
               <CardHeader>
-                <CardTitle className="text-base font-heading">{layer.title}</CardTitle>
+                <CardTitle className="text-base font-heading">
+                  {layer.title}
+                </CardTitle>
                 <CardDescription>{layer.summary}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-2">
@@ -267,7 +322,9 @@ export default function NexusUltraPage() {
       <section className="space-y-4">
         <div className="flex items-center gap-2">
           <Gauge className="h-4 w-4 text-primary" />
-          <h2 className="text-lg font-heading font-semibold">Automated Gates</h2>
+          <h2 className="text-lg font-heading font-semibold">
+            Automated Gates
+          </h2>
         </div>
         <div className="grid gap-4 xl:grid-cols-3">
           <GateGroup
@@ -295,7 +352,9 @@ export default function NexusUltraPage() {
               <Shield className="h-4 w-4 text-primary" />
               Compliance Automation
             </CardTitle>
-            <CardDescription>Signed evidence and controls modeled per framework.</CardDescription>
+            <CardDescription>
+              Signed evidence and controls modeled per framework.
+            </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3 md:grid-cols-2">
             {data.compliance.map((framework) => (
@@ -305,11 +364,16 @@ export default function NexusUltraPage() {
               >
                 <div className="flex items-center justify-between gap-2">
                   <h3 className="text-sm font-medium">{framework.name}</h3>
-                  <Badge variant="outline" className={complianceStyles[framework.status]}>
+                  <Badge
+                    variant="outline"
+                    className={complianceStyles[framework.status]}
+                  >
                     {framework.status}
                   </Badge>
                 </div>
-                <p className="mt-2 text-xs text-muted-foreground">Score: {framework.score}</p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Score: {framework.score}
+                </p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {framework.controls.map((control) => (
                     <span
@@ -331,16 +395,25 @@ export default function NexusUltraPage() {
               <GitBranch className="h-4 w-4 text-primary" />
               Executive Metrics
             </CardTitle>
-            <CardDescription>Board-level reporting targets exposed by the control plane.</CardDescription>
+            <CardDescription>
+              Board-level reporting targets exposed by the control plane.
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {data.executiveMetrics.map((metric) => (
-              <div key={metric.label} className="rounded-xl border border-white/[0.08] bg-black/20 px-4 py-3">
+              <div
+                key={metric.label}
+                className="rounded-xl border border-white/[0.08] bg-black/20 px-4 py-3"
+              >
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-xs text-muted-foreground">{metric.label}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {metric.label}
+                  </span>
                   <span className="text-sm font-semibold">{metric.value}</span>
                 </div>
-                <p className="mt-2 text-[11px] leading-5 text-muted-foreground">{metric.detail}</p>
+                <p className="mt-2 text-[11px] leading-5 text-muted-foreground">
+                  {metric.detail}
+                </p>
               </div>
             ))}
           </CardContent>
@@ -354,15 +427,23 @@ export default function NexusUltraPage() {
               <Cloud className="h-4 w-4 text-primary" />
               Cloud and Federation
             </CardTitle>
-            <CardDescription>Deployment targets and organization-wide control surfaces.</CardDescription>
+            <CardDescription>
+              Deployment targets and organization-wide control surfaces.
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {data.cloudTargets.map((group) => (
-              <div key={group.title} className="rounded-2xl border border-white/[0.08] bg-black/20 p-4">
+              <div
+                key={group.title}
+                className="rounded-2xl border border-white/[0.08] bg-black/20 p-4"
+              >
                 <h3 className="text-sm font-medium">{group.title}</h3>
                 <div className="mt-3 space-y-2">
                   {group.items.map((item) => (
-                    <p key={item} className="text-xs leading-5 text-muted-foreground">
+                    <p
+                      key={item}
+                      className="text-xs leading-5 text-muted-foreground"
+                    >
                       {item}
                     </p>
                   ))}
@@ -378,19 +459,28 @@ export default function NexusUltraPage() {
               <Sparkles className="h-4 w-4 text-primary" />
               Advanced Integrations
             </CardTitle>
-            <CardDescription>Monitoring, response, analytics, and workflow hooks.</CardDescription>
+            <CardDescription>
+              Monitoring, response, analytics, and workflow hooks.
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {data.integrations.map((integration) => (
-              <div key={integration.name} className="rounded-2xl border border-white/[0.08] bg-black/20 p-4">
+              <div
+                key={integration.name}
+                className="rounded-2xl border border-white/[0.08] bg-black/20 p-4"
+              >
                 <div className="flex items-center justify-between gap-2">
                   <h3 className="text-sm font-medium">{integration.name}</h3>
                   <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
                     {integration.category}
                   </span>
                 </div>
-                <p className="mt-2 text-xs leading-5 text-slate-100">{integration.capability}</p>
-                <p className="mt-2 text-[11px] leading-5 text-muted-foreground">{integration.automation}</p>
+                <p className="mt-2 text-xs leading-5 text-slate-100">
+                  {integration.capability}
+                </p>
+                <p className="mt-2 text-[11px] leading-5 text-muted-foreground">
+                  {integration.automation}
+                </p>
               </div>
             ))}
           </CardContent>
@@ -400,16 +490,26 @@ export default function NexusUltraPage() {
       <section className="grid gap-4 xl:grid-cols-3">
         <Card className="border-white/10 bg-card/40 shadow-none xl:col-span-1">
           <CardHeader>
-            <CardTitle className="text-base font-heading">Supply Chain Security</CardTitle>
-            <CardDescription>SBOM, provenance, and verification controls.</CardDescription>
+            <CardTitle className="text-base font-heading">
+              Supply Chain Security
+            </CardTitle>
+            <CardDescription>
+              SBOM, provenance, and verification controls.
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {data.supplyChain.map((group) => (
-              <div key={group.title} className="rounded-2xl border border-white/[0.08] bg-black/20 p-4">
+              <div
+                key={group.title}
+                className="rounded-2xl border border-white/[0.08] bg-black/20 p-4"
+              >
                 <h3 className="text-sm font-medium">{group.title}</h3>
                 <div className="mt-3 space-y-2">
                   {group.items.map((item) => (
-                    <p key={item} className="text-xs leading-5 text-muted-foreground">
+                    <p
+                      key={item}
+                      className="text-xs leading-5 text-muted-foreground"
+                    >
                       {item}
                     </p>
                   ))}
@@ -421,16 +521,26 @@ export default function NexusUltraPage() {
 
         <Card className="border-white/10 bg-card/40 shadow-none xl:col-span-1">
           <CardHeader>
-            <CardTitle className="text-base font-heading">Self-Healing Workflows</CardTitle>
-            <CardDescription>Recovery controls that reduce operator toil during failures.</CardDescription>
+            <CardTitle className="text-base font-heading">
+              Self-Healing Workflows
+            </CardTitle>
+            <CardDescription>
+              Recovery controls that reduce operator toil during failures.
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {data.selfHealing.map((group) => (
-              <div key={group.title} className="rounded-2xl border border-white/[0.08] bg-black/20 p-4">
+              <div
+                key={group.title}
+                className="rounded-2xl border border-white/[0.08] bg-black/20 p-4"
+              >
                 <h3 className="text-sm font-medium">{group.title}</h3>
                 <div className="mt-3 space-y-2">
                   {group.items.map((item) => (
-                    <p key={item} className="text-xs leading-5 text-muted-foreground">
+                    <p
+                      key={item}
+                      className="text-xs leading-5 text-muted-foreground"
+                    >
                       {item}
                     </p>
                   ))}
@@ -442,23 +552,39 @@ export default function NexusUltraPage() {
 
         <Card className="border-white/10 bg-card/40 shadow-none xl:col-span-1">
           <CardHeader>
-            <CardTitle className="text-base font-heading">Deployment Path</CardTitle>
-            <CardDescription>One-command rollout staged into four implementation phases.</CardDescription>
+            <CardTitle className="text-base font-heading">
+              Deployment Path
+            </CardTitle>
+            <CardDescription>
+              One-command rollout staged into four implementation phases.
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="rounded-2xl border border-primary/[0.15] bg-primary/[0.08] p-4">
-              <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Deployment Command</p>
-              <pre className="mt-2 overflow-x-auto text-xs text-primary">{data.product.deploymentCommand}</pre>
+              <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+                Deployment Command
+              </p>
+              <pre className="mt-2 overflow-x-auto text-xs text-primary">
+                {data.product.deploymentCommand}
+              </pre>
             </div>
             {data.deployment.map((phase) => (
-              <div key={phase.phase} className="rounded-2xl border border-white/[0.08] bg-black/20 p-4">
+              <div
+                key={phase.phase}
+                className="rounded-2xl border border-white/[0.08] bg-black/20 p-4"
+              >
                 <div className="flex items-center justify-between gap-2">
                   <h3 className="text-sm font-medium">{phase.title}</h3>
-                  <Badge variant="outline" className="border-white/10 bg-white/5">
+                  <Badge
+                    variant="outline"
+                    className="border-white/10 bg-white/5"
+                  >
                     {phase.phase}
                   </Badge>
                 </div>
-                <p className="mt-2 text-xs leading-5 text-muted-foreground">{phase.summary}</p>
+                <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                  {phase.summary}
+                </p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {phase.deliverables.map((item) => (
                     <span
@@ -478,12 +604,19 @@ export default function NexusUltraPage() {
       <section>
         <Card className="border-white/10 bg-card/40 shadow-none">
           <CardHeader>
-            <CardTitle className="text-base font-heading">Recommended Next Moves</CardTitle>
-            <CardDescription>Highest-signal follow-up actions from the enterprise blueprint.</CardDescription>
+            <CardTitle className="text-base font-heading">
+              Recommended Next Moves
+            </CardTitle>
+            <CardDescription>
+              Highest-signal follow-up actions from the enterprise blueprint.
+            </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3 md:grid-cols-2">
             {data.recommendations.map((item) => (
-              <div key={item} className="rounded-2xl border border-white/[0.08] bg-black/20 px-4 py-4 text-sm leading-6 text-slate-100">
+              <div
+                key={item}
+                className="rounded-2xl border border-white/[0.08] bg-black/20 px-4 py-4 text-sm leading-6 text-slate-100"
+              >
                 {item}
               </div>
             ))}

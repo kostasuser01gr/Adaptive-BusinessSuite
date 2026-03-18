@@ -25,12 +25,18 @@ export type WidgetType =
   | "custom-kpi";
 export type EntityScope = "vehicles" | "bookings" | "customers" | "tasks";
 export type VehicleStatus = "available" | "rented" | "maintenance" | "reserved";
-export type BookingStatus = "draft" | "confirmed" | "active" | "returned" | "late";
+export type BookingStatus =
+  | "draft"
+  | "confirmed"
+  | "active"
+  | "returned"
+  | "late";
 export type MaintenanceStatus = "scheduled" | "in-progress" | "resolved";
 export type TaskStatus = "todo" | "doing" | "done";
 export type NoteCategory = "ops" | "customer" | "finance" | "personal";
 export type ModelProviderId =
   | "none"
+  | "openai"
   | "mock-local"
   | "openai-compatible"
   | "local-private"
@@ -45,7 +51,11 @@ export type QuickActionTarget =
   | "AddCustomer"
   | "OpenReturns";
 export type SuggestionStatus = "pending" | "applied" | "dismissed";
-export type HistoryType = "suggestion-applied" | "rollback" | "preset-reset" | "workspace-created";
+export type HistoryType =
+  | "suggestion-applied"
+  | "rollback"
+  | "preset-reset"
+  | "workspace-created";
 
 export interface UserProfile {
   id: string;
@@ -213,8 +223,13 @@ export type AssistantAction =
   | { type: "add-quick-action"; quickAction: QuickActionDefinition }
   | { type: "add-widget"; widget: DashboardWidget }
   | { type: "switch-mode"; mode: WorkspaceMode }
-  | { type: "create-workflow"; module: ModuleDefinition; quickAction: QuickActionDefinition }
-  | { type: "noop"; insight: string };
+  | {
+      type: "create-workflow";
+      module: ModuleDefinition;
+      quickAction: QuickActionDefinition;
+    }
+  | { type: "noop"; insight: string }
+  | { type: "remote-mutation"; raw: any };
 
 export interface AssistantSuggestion {
   id: string;
@@ -283,89 +298,304 @@ export function nowIso() {
   return new Date().toISOString();
 }
 
-export function createModule(key: ModuleKey, title: string, description: string, icon: string): ModuleDefinition {
+export function createModule(
+  key: ModuleKey,
+  title: string,
+  description: string,
+  icon: string,
+): ModuleDefinition {
   return { id: createId("module"), key, title, description, icon };
 }
 
-export function createWidget(type: WidgetType, title: string, description: string, metricKey?: string): DashboardWidget {
+export function createWidget(
+  type: WidgetType,
+  title: string,
+  description: string,
+  metricKey?: string,
+): DashboardWidget {
   return { id: createId("widget"), type, title, description, metricKey };
 }
 
-export function createQuickAction(label: string, icon: string, target: QuickActionTarget): QuickActionDefinition {
+export function createQuickAction(
+  label: string,
+  icon: string,
+  target: QuickActionTarget,
+): QuickActionDefinition {
   return { id: createId("quick-action"), label, icon, target };
 }
 
-export function createCustomField(scope: EntityScope, label: string, type: "text" | "number" | "date", placeholder?: string): CustomFieldDefinition {
+export function createCustomField(
+  scope: EntityScope,
+  label: string,
+  type: "text" | "number" | "date",
+  placeholder?: string,
+): CustomFieldDefinition {
   return { id: createId("field"), scope, label, type, placeholder };
 }
 
-export function createWorkspacePreset(mode: WorkspaceMode, ownerId: string, name?: string, existingId?: string): WorkspaceRecord {
+export function createWorkspacePreset(
+  mode: WorkspaceMode,
+  ownerId: string,
+  name?: string,
+  existingId?: string,
+): WorkspaceRecord {
   const workspaceId = existingId ?? createId("workspace");
   const now = nowIso();
   const baseModules: Record<WorkspaceMode, ModuleDefinition[]> = {
     rental: [
-      createModule("dashboard", "Dashboard", "Central operational control center.", "grid"),
-      createModule("fleet", "Fleet", "Vehicle availability, mileage, and service state.", "car"),
-      createModule("bookings", "Bookings", "Reservations, returns, and extensions.", "calendar"),
-      createModule("customers", "Customers", "Profiles, contact info, and linked rentals.", "people"),
-      createModule("maintenance", "Maintenance", "Service backlog and vehicle issues.", "construct"),
-      createModule("tasks", "Tasks", "Operational follow-through and reminders.", "checkmark-circle"),
-      createModule("notes", "Notes", "Fast capture for daily context.", "document-text"),
+      createModule(
+        "dashboard",
+        "Dashboard",
+        "Central operational control center.",
+        "grid",
+      ),
+      createModule(
+        "fleet",
+        "Fleet",
+        "Vehicle availability, mileage, and service state.",
+        "car",
+      ),
+      createModule(
+        "bookings",
+        "Bookings",
+        "Reservations, returns, and extensions.",
+        "calendar",
+      ),
+      createModule(
+        "customers",
+        "Customers",
+        "Profiles, contact info, and linked rentals.",
+        "people",
+      ),
+      createModule(
+        "maintenance",
+        "Maintenance",
+        "Service backlog and vehicle issues.",
+        "construct",
+      ),
+      createModule(
+        "tasks",
+        "Tasks",
+        "Operational follow-through and reminders.",
+        "checkmark-circle",
+      ),
+      createModule(
+        "notes",
+        "Notes",
+        "Fast capture for daily context.",
+        "document-text",
+      ),
       createModule("calendar", "Calendar", "Daily and weekly agenda.", "today"),
-      createModule("finance", "Finance Snapshot", "Revenue and payment overview.", "cash"),
-      createModule("checkflow", "Check-In / Out", "Guided handoff workflow.", "swap-horizontal"),
+      createModule(
+        "finance",
+        "Finance Snapshot",
+        "Revenue and payment overview.",
+        "cash",
+      ),
+      createModule(
+        "checkflow",
+        "Check-In / Out",
+        "Guided handoff workflow.",
+        "swap-horizontal",
+      ),
     ],
     personal: [
-      createModule("dashboard", "Dashboard", "Personal operating command center.", "grid"),
-      createModule("tasks", "Tasks", "Priority stack and routines.", "checkmark-circle"),
-      createModule("notes", "Notes", "Captured ideas and references.", "document-text"),
-      createModule("calendar", "Calendar", "Agenda and planning view.", "today"),
-      createModule("finance", "Finance Snapshot", "Simple personal money view.", "cash"),
+      createModule(
+        "dashboard",
+        "Dashboard",
+        "Personal operating command center.",
+        "grid",
+      ),
+      createModule(
+        "tasks",
+        "Tasks",
+        "Priority stack and routines.",
+        "checkmark-circle",
+      ),
+      createModule(
+        "notes",
+        "Notes",
+        "Captured ideas and references.",
+        "document-text",
+      ),
+      createModule(
+        "calendar",
+        "Calendar",
+        "Agenda and planning view.",
+        "today",
+      ),
+      createModule(
+        "finance",
+        "Finance Snapshot",
+        "Simple personal money view.",
+        "cash",
+      ),
     ],
     hybrid: [
-      createModule("dashboard", "Dashboard", "Unified personal and business command center.", "grid"),
+      createModule(
+        "dashboard",
+        "Dashboard",
+        "Unified personal and business command center.",
+        "grid",
+      ),
       createModule("fleet", "Fleet", "Vehicle operations.", "car"),
-      createModule("bookings", "Bookings", "Rental schedule and commitments.", "calendar"),
-      createModule("customers", "Customers", "Business contacts and renters.", "people"),
-      createModule("tasks", "Tasks", "Cross-mode execution queue.", "checkmark-circle"),
-      createModule("notes", "Notes", "Operational memory and personal capture.", "document-text"),
+      createModule(
+        "bookings",
+        "Bookings",
+        "Rental schedule and commitments.",
+        "calendar",
+      ),
+      createModule(
+        "customers",
+        "Customers",
+        "Business contacts and renters.",
+        "people",
+      ),
+      createModule(
+        "tasks",
+        "Tasks",
+        "Cross-mode execution queue.",
+        "checkmark-circle",
+      ),
+      createModule(
+        "notes",
+        "Notes",
+        "Operational memory and personal capture.",
+        "document-text",
+      ),
       createModule("calendar", "Calendar", "Shared agenda view.", "today"),
-      createModule("finance", "Finance Snapshot", "Income and cost snapshot.", "cash"),
+      createModule(
+        "finance",
+        "Finance Snapshot",
+        "Income and cost snapshot.",
+        "cash",
+      ),
     ],
     custom: [
-      createModule("dashboard", "Dashboard", "Minimal adaptive shell ready for customization.", "grid"),
-      createModule("tasks", "Tasks", "Start with a task-driven workspace.", "checkmark-circle"),
-      createModule("notes", "Notes", "Start with fast capture.", "document-text"),
+      createModule(
+        "dashboard",
+        "Dashboard",
+        "Minimal adaptive shell ready for customization.",
+        "grid",
+      ),
+      createModule(
+        "tasks",
+        "Tasks",
+        "Start with a task-driven workspace.",
+        "checkmark-circle",
+      ),
+      createModule(
+        "notes",
+        "Notes",
+        "Start with fast capture.",
+        "document-text",
+      ),
     ],
   };
 
   const baseWidgets: Record<WorkspaceMode, DashboardWidget[]> = {
     rental: [
-      createWidget("today-summary", "Today Summary", "What matters right now across bookings and fleet."),
-      createWidget("bookings-today", "Bookings Today", "Confirmed pickups scheduled today."),
-      createWidget("returns-today", "Returns Today", "Vehicles expected back before end of day."),
-      createWidget("available-vehicles", "Available Vehicles", "Ready-to-rent fleet count."),
-      createWidget("maintenance-due", "Maintenance Due", "Vehicles that need service attention."),
-      createWidget("notes-tasks", "Notes + Tasks", "Pinned notes and pending work."),
-      createWidget("revenue-snapshot", "Revenue Snapshot", "Daily and month-to-date revenue."),
-      createWidget("assistant-recommendations", "Assistant Recommendations", "Next-best actions from the operating system."),
+      createWidget(
+        "today-summary",
+        "Today Summary",
+        "What matters right now across bookings and fleet.",
+      ),
+      createWidget(
+        "bookings-today",
+        "Bookings Today",
+        "Confirmed pickups scheduled today.",
+      ),
+      createWidget(
+        "returns-today",
+        "Returns Today",
+        "Vehicles expected back before end of day.",
+      ),
+      createWidget(
+        "available-vehicles",
+        "Available Vehicles",
+        "Ready-to-rent fleet count.",
+      ),
+      createWidget(
+        "maintenance-due",
+        "Maintenance Due",
+        "Vehicles that need service attention.",
+      ),
+      createWidget(
+        "notes-tasks",
+        "Notes + Tasks",
+        "Pinned notes and pending work.",
+      ),
+      createWidget(
+        "revenue-snapshot",
+        "Revenue Snapshot",
+        "Daily and month-to-date revenue.",
+      ),
+      createWidget(
+        "assistant-recommendations",
+        "Assistant Recommendations",
+        "Next-best actions from the operating system.",
+      ),
     ],
     personal: [
-      createWidget("today-summary", "Today Summary", "Focus, workload, and momentum."),
-      createWidget("notes-tasks", "Notes + Tasks", "Current action list and notes."),
-      createWidget("assistant-recommendations", "Assistant Recommendations", "Personal productivity nudges."),
-      createWidget("revenue-snapshot", "Money Snapshot", "Cash in, cash out, and balance trend."),
+      createWidget(
+        "today-summary",
+        "Today Summary",
+        "Focus, workload, and momentum.",
+      ),
+      createWidget(
+        "notes-tasks",
+        "Notes + Tasks",
+        "Current action list and notes.",
+      ),
+      createWidget(
+        "assistant-recommendations",
+        "Assistant Recommendations",
+        "Personal productivity nudges.",
+      ),
+      createWidget(
+        "revenue-snapshot",
+        "Money Snapshot",
+        "Cash in, cash out, and balance trend.",
+      ),
     ],
     hybrid: [
-      createWidget("today-summary", "Today Summary", "Personal and business priorities in one view."),
-      createWidget("bookings-today", "Bookings Today", "Business-critical commitments."),
-      createWidget("notes-tasks", "Notes + Tasks", "Cross-mode execution snapshot."),
-      createWidget("revenue-snapshot", "Revenue Snapshot", "Business income and personal spend signal."),
-      createWidget("assistant-recommendations", "Assistant Recommendations", "Suggestions tuned for a mixed workspace."),
+      createWidget(
+        "today-summary",
+        "Today Summary",
+        "Personal and business priorities in one view.",
+      ),
+      createWidget(
+        "bookings-today",
+        "Bookings Today",
+        "Business-critical commitments.",
+      ),
+      createWidget(
+        "notes-tasks",
+        "Notes + Tasks",
+        "Cross-mode execution snapshot.",
+      ),
+      createWidget(
+        "revenue-snapshot",
+        "Revenue Snapshot",
+        "Business income and personal spend signal.",
+      ),
+      createWidget(
+        "assistant-recommendations",
+        "Assistant Recommendations",
+        "Suggestions tuned for a mixed workspace.",
+      ),
     ],
     custom: [
-      createWidget("today-summary", "Today Summary", "Build your own command center from here."),
-      createWidget("assistant-recommendations", "Assistant Recommendations", "Ask the assistant to shape the workspace."),
+      createWidget(
+        "today-summary",
+        "Today Summary",
+        "Build your own command center from here.",
+      ),
+      createWidget(
+        "assistant-recommendations",
+        "Assistant Recommendations",
+        "Ask the assistant to shape the workspace.",
+      ),
     ],
   };
 

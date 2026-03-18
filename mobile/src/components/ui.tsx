@@ -35,7 +35,9 @@ export function Screen({
   if (!scroll) {
     return (
       <SafeAreaView edges={["top"]} style={styles.safeArea}>
-        <View style={[styles.screenContent, contentContainerStyle]}>{children}</View>
+        <View style={[styles.screenContent, contentContainerStyle]}>
+          {children}
+        </View>
       </SafeAreaView>
     );
   }
@@ -52,7 +54,15 @@ export function Screen({
   );
 }
 
-export function HeroCard({ title, subtitle, meta }: { title: string; subtitle: string; meta?: ReactNode }) {
+export function HeroCard({
+  title,
+  subtitle,
+  meta,
+}: {
+  title: string;
+  subtitle: string;
+  meta?: ReactNode;
+}) {
   return (
     <LinearGradient
       colors={["#152347", "#0E1730"]}
@@ -62,12 +72,20 @@ export function HeroCard({ title, subtitle, meta }: { title: string; subtitle: s
     >
       <Text style={styles.heroTitle}>{title}</Text>
       <Text style={styles.heroSubtitle}>{subtitle}</Text>
-      {meta ? <View style={{ marginTop: theme.spacing.md }}>{meta}</View> : null}
+      {meta ? (
+        <View style={{ marginTop: theme.spacing.md }}>{meta}</View>
+      ) : null}
     </LinearGradient>
   );
 }
 
-export function Panel({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
+export function Panel({
+  children,
+  style,
+}: {
+  children: ReactNode;
+  style?: StyleProp<ViewStyle>;
+}) {
   return <View style={[styles.panel, style]}>{children}</View>;
 }
 
@@ -84,7 +102,9 @@ export function SectionHeader({
     <View style={styles.sectionHeader}>
       <View style={{ flex: 1 }}>
         <Text style={styles.sectionTitle}>{title}</Text>
-        {subtitle ? <Text style={styles.sectionSubtitle}>{subtitle}</Text> : null}
+        {subtitle ? (
+          <Text style={styles.sectionSubtitle}>{subtitle}</Text>
+        ) : null}
       </View>
       {action}
     </View>
@@ -139,19 +159,35 @@ export function StatusBadge({
   );
 }
 
-export function AppButton({ label, onPress, icon, variant = "primary", style }: ButtonProps) {
+export function AppButton({
+  label,
+  onPress,
+  icon,
+  variant = "primary",
+  style,
+}: ButtonProps) {
   const variantStyles =
     variant === "secondary"
       ? { backgroundColor: theme.colors.chip, borderColor: theme.colors.border }
       : variant === "ghost"
         ? { backgroundColor: "transparent", borderColor: "transparent" }
-        : { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary };
+        : {
+            backgroundColor: theme.colors.primary,
+            borderColor: theme.colors.primary,
+          };
 
   const textColor = variant === "primary" ? "#06111D" : theme.colors.text;
 
   return (
     <Pressable onPress={onPress} style={[styles.button, variantStyles, style]}>
-      {icon ? <Ionicons name={icon} size={16} color={textColor} style={{ marginRight: 8 }} /> : null}
+      {icon ? (
+        <Ionicons
+          name={icon}
+          size={16}
+          color={textColor}
+          style={{ marginRight: 8 }}
+        />
+      ) : null}
       <Text style={[styles.buttonText, { color: textColor }]}>{label}</Text>
     </Pressable>
   );
@@ -177,7 +213,11 @@ export function AppInput({
       placeholder={placeholder}
       placeholderTextColor={theme.colors.textMuted}
       multiline={multiline}
-      style={[styles.input, multiline ? styles.inputMultiline : undefined, style]}
+      style={[
+        styles.input,
+        multiline ? styles.inputMultiline : undefined,
+        style,
+      ]}
     />
   );
 }
@@ -196,10 +236,22 @@ export function Chip({
       onPress={onPress}
       style={[
         styles.chip,
-        active ? { backgroundColor: theme.colors.primaryMuted, borderColor: theme.colors.primary } : null,
+        active
+          ? {
+              backgroundColor: theme.colors.primaryMuted,
+              borderColor: theme.colors.primary,
+            }
+          : null,
       ]}
     >
-      <Text style={[styles.chipText, active ? { color: theme.colors.primary } : null]}>{label}</Text>
+      <Text
+        style={[
+          styles.chipText,
+          active ? { color: theme.colors.primary } : null,
+        ]}
+      >
+        {label}
+      </Text>
     </Pressable>
   );
 }
@@ -216,9 +268,20 @@ export function EmptyState({
   return (
     <Panel style={{ alignItems: "center", paddingVertical: theme.spacing.xl }}>
       <Ionicons name="sparkles" size={28} color={theme.colors.primary} />
-      <Text style={[styles.sectionTitle, { marginTop: theme.spacing.sm }]}>{title}</Text>
-      <Text style={[styles.sectionSubtitle, { textAlign: "center", marginTop: theme.spacing.sm }]}>{description}</Text>
-      {action ? <View style={{ marginTop: theme.spacing.md }}>{action}</View> : null}
+      <Text style={[styles.sectionTitle, { marginTop: theme.spacing.sm }]}>
+        {title}
+      </Text>
+      <Text
+        style={[
+          styles.sectionSubtitle,
+          { textAlign: "center", marginTop: theme.spacing.sm },
+        ]}
+      >
+        {description}
+      </Text>
+      {action ? (
+        <View style={{ marginTop: theme.spacing.md }}>{action}</View>
+      ) : null}
     </Panel>
   );
 }

@@ -1,17 +1,31 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, jsonb, timestamp, boolean, integer, numeric, date } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  text,
+  varchar,
+  jsonb,
+  timestamp,
+  boolean,
+  integer,
+  numeric,
+  date,
+} from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 // --- Shared Helper for Sync Metadata ---
 const syncMetadata = {
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => new Date()),
   deletedAt: timestamp("deleted_at"),
 };
 
 export const users = pgTable("users", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
   displayName: text("display_name"),
@@ -20,12 +34,19 @@ export const users = pgTable("users", {
   preferences: jsonb("preferences"),
   ...syncMetadata,
 });
-export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true, updatedAt: true, deletedAt: true });
+export const insertUserSchema = createInsertSchema(users).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  deletedAt: true,
+});
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 
 export const workspaces = pgTable("workspaces", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
   ownerId: varchar("owner_id").notNull(),
   type: text("type").notNull().default("rental"),
@@ -34,12 +55,19 @@ export const workspaces = pgTable("workspaces", {
   modelConfig: jsonb("model_config"),
   ...syncMetadata,
 });
-export const insertWorkspaceSchema = createInsertSchema(workspaces).omit({ id: true, createdAt: true, updatedAt: true, deletedAt: true });
+export const insertWorkspaceSchema = createInsertSchema(workspaces).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  deletedAt: true,
+});
 export type InsertWorkspace = z.infer<typeof insertWorkspaceSchema>;
 export type Workspace = typeof workspaces.$inferSelect;
 
 export const modules = pgTable("modules", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull(),
   workspaceId: varchar("workspace_id"),
   type: text("type").notNull(),
@@ -51,12 +79,19 @@ export const modules = pgTable("modules", {
   visible: boolean("visible").default(true),
   ...syncMetadata,
 });
-export const insertModuleSchema = createInsertSchema(modules).omit({ id: true, createdAt: true, updatedAt: true, deletedAt: true });
+export const insertModuleSchema = createInsertSchema(modules).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  deletedAt: true,
+});
 export type InsertModule = z.infer<typeof insertModuleSchema>;
 export type Module = typeof modules.$inferSelect;
 
 export const chatMessages = pgTable("chat_messages", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull(),
   workspaceId: varchar("workspace_id"),
   role: text("role").notNull(),
@@ -65,12 +100,19 @@ export const chatMessages = pgTable("chat_messages", {
   metadata: jsonb("metadata"),
   ...syncMetadata,
 });
-export const insertChatMessageSchema = createInsertSchema(chatMessages).omit({ id: true, createdAt: true, updatedAt: true, deletedAt: true });
+export const insertChatMessageSchema = createInsertSchema(chatMessages).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  deletedAt: true,
+});
 export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;
 export type ChatMessage = typeof chatMessages.$inferSelect;
 
 export const vehicles = pgTable("vehicles", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull(),
   workspaceId: varchar("workspace_id"),
   make: text("make").notNull(),
@@ -89,12 +131,19 @@ export const vehicles = pgTable("vehicles", {
   latestInspectionId: varchar("latest_inspection_id"),
   ...syncMetadata,
 });
-export const insertVehicleSchema = createInsertSchema(vehicles).omit({ id: true, createdAt: true, updatedAt: true, deletedAt: true });
+export const insertVehicleSchema = createInsertSchema(vehicles).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  deletedAt: true,
+});
 export type InsertVehicle = z.infer<typeof insertVehicleSchema>;
 export type Vehicle = typeof vehicles.$inferSelect;
 
 export const customers = pgTable("customers", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull(),
   workspaceId: varchar("workspace_id"),
   name: text("name").notNull(),
@@ -107,12 +156,19 @@ export const customers = pgTable("customers", {
   totalRentals: integer("total_rentals").default(0),
   ...syncMetadata,
 });
-export const insertCustomerSchema = createInsertSchema(customers).omit({ id: true, createdAt: true, updatedAt: true, deletedAt: true });
+export const insertCustomerSchema = createInsertSchema(customers).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  deletedAt: true,
+});
 export type InsertCustomer = z.infer<typeof insertCustomerSchema>;
 export type Customer = typeof customers.$inferSelect;
 
 export const bookings = pgTable("bookings", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull(),
   workspaceId: varchar("workspace_id"),
   vehicleId: varchar("vehicle_id"),
@@ -134,12 +190,19 @@ export const bookings = pgTable("bookings", {
   paymentId: text("payment_id"),
   ...syncMetadata,
 });
-export const insertBookingSchema = createInsertSchema(bookings).omit({ id: true, createdAt: true, updatedAt: true, deletedAt: true });
+export const insertBookingSchema = createInsertSchema(bookings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  deletedAt: true,
+});
 export type InsertBooking = z.infer<typeof insertBookingSchema>;
 export type Booking = typeof bookings.$inferSelect;
 
 export const maintenanceRecords = pgTable("maintenance_records", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull(),
   workspaceId: varchar("workspace_id"),
   vehicleId: varchar("vehicle_id"),
@@ -151,12 +214,16 @@ export const maintenanceRecords = pgTable("maintenance_records", {
   completedDate: timestamp("completed_date"),
   ...syncMetadata,
 });
-export const insertMaintenanceSchema = createInsertSchema(maintenanceRecords).omit({ id: true, createdAt: true, updatedAt: true, deletedAt: true });
+export const insertMaintenanceSchema = createInsertSchema(
+  maintenanceRecords,
+).omit({ id: true, createdAt: true, updatedAt: true, deletedAt: true });
 export type InsertMaintenance = z.infer<typeof insertMaintenanceSchema>;
 export type MaintenanceRecord = typeof maintenanceRecords.$inferSelect;
 
 export const tasks = pgTable("tasks", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull(),
   workspaceId: varchar("workspace_id"),
   title: text("title").notNull(),
@@ -167,12 +234,19 @@ export const tasks = pgTable("tasks", {
   category: text("category"),
   ...syncMetadata,
 });
-export const insertTaskSchema = createInsertSchema(tasks).omit({ id: true, createdAt: true, updatedAt: true, deletedAt: true });
+export const insertTaskSchema = createInsertSchema(tasks).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  deletedAt: true,
+});
 export type InsertTask = z.infer<typeof insertTaskSchema>;
 export type Task = typeof tasks.$inferSelect;
 
 export const notes = pgTable("notes", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull(),
   workspaceId: varchar("workspace_id"),
   title: text("title"),
@@ -181,12 +255,19 @@ export const notes = pgTable("notes", {
   pinned: boolean("pinned").default(false),
   ...syncMetadata,
 });
-export const insertNoteSchema = createInsertSchema(notes).omit({ id: true, createdAt: true, updatedAt: true, deletedAt: true });
+export const insertNoteSchema = createInsertSchema(notes).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  deletedAt: true,
+});
 export type InsertNote = z.infer<typeof insertNoteSchema>;
 export type Note = typeof notes.$inferSelect;
 
 export const actionHistory = pgTable("action_history", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull(),
   workspaceId: varchar("workspace_id"),
   actorType: text("actor_type").notNull().default("user"), // user, system, ai
@@ -199,12 +280,19 @@ export const actionHistory = pgTable("action_history", {
   status: text("status").notNull().default("applied"),
   ...syncMetadata,
 });
-export const insertActionSchema = createInsertSchema(actionHistory).omit({ id: true, createdAt: true, updatedAt: true, deletedAt: true });
+export const insertActionSchema = createInsertSchema(actionHistory).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  deletedAt: true,
+});
 export type InsertAction = z.infer<typeof insertActionSchema>;
 export type ActionHistory = typeof actionHistory.$inferSelect;
 
 export const assistantMemory = pgTable("assistant_memory", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull(),
   workspaceId: varchar("workspace_id"),
   key: text("key").notNull(),
@@ -212,12 +300,19 @@ export const assistantMemory = pgTable("assistant_memory", {
   category: text("category").default("general"),
   ...syncMetadata,
 });
-export const insertMemorySchema = createInsertSchema(assistantMemory).omit({ id: true, createdAt: true, updatedAt: true, deletedAt: true });
+export const insertMemorySchema = createInsertSchema(assistantMemory).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  deletedAt: true,
+});
 export type InsertMemory = z.infer<typeof insertMemorySchema>;
 export type AssistantMemoryRecord = typeof assistantMemory.$inferSelect;
 
 export const notifications = pgTable("notifications", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull(),
   workspaceId: varchar("workspace_id"),
   title: text("title").notNull(),
@@ -227,12 +322,19 @@ export const notifications = pgTable("notifications", {
   metadata: jsonb("metadata"),
   ...syncMetadata,
 });
-export const insertNotificationSchema = createInsertSchema(notifications).omit({ id: true, createdAt: true, updatedAt: true, deletedAt: true });
+export const insertNotificationSchema = createInsertSchema(notifications).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  deletedAt: true,
+});
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 export type Notification = typeof notifications.$inferSelect;
 
 export const automations = pgTable("automations", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull(),
   workspaceId: varchar("workspace_id"),
   name: text("name").notNull(),
@@ -242,12 +344,19 @@ export const automations = pgTable("automations", {
   enabled: boolean("enabled").notNull().default(true),
   ...syncMetadata,
 });
-export const insertAutomationSchema = createInsertSchema(automations).omit({ id: true, createdAt: true, updatedAt: true, deletedAt: true });
+export const insertAutomationSchema = createInsertSchema(automations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  deletedAt: true,
+});
 export type InsertAutomation = z.infer<typeof insertAutomationSchema>;
 export type Automation = typeof automations.$inferSelect;
 
 export const inspections = pgTable("inspections", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull(),
   workspaceId: varchar("workspace_id"),
   vehicleId: varchar("vehicle_id").notNull(),
@@ -259,6 +368,11 @@ export const inspections = pgTable("inspections", {
   notes: text("notes"),
   ...syncMetadata,
 });
-export const insertInspectionSchema = createInsertSchema(inspections).omit({ id: true, createdAt: true, updatedAt: true, deletedAt: true });
+export const insertInspectionSchema = createInsertSchema(inspections).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  deletedAt: true,
+});
 export type InsertInspection = z.infer<typeof insertInspectionSchema>;
 export type Inspection = typeof inspections.$inferSelect;

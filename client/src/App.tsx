@@ -19,7 +19,12 @@ import SettingsPage from "./pages/settings/SettingsPage";
 import FinancialPage from "./pages/financial/FinancialPage";
 import NexusUltraPage from "./pages/nexus/NexusUltraPage";
 
-function ProtectedRoute({ component: Component }: { component: React.ComponentType; path?: string }) {
+function ProtectedRoute({
+  component: Component,
+}: {
+  component: React.ComponentType;
+  path?: string;
+}) {
   const { isAuthenticated, isLoading } = useAppState();
   if (isLoading) return null;
   if (!isAuthenticated) return <Redirect to="/auth" />;
@@ -30,16 +35,36 @@ function Router() {
   return (
     <Switch>
       <Route path="/auth" component={AuthPage} />
-      <Route path="/"><ProtectedRoute component={DashboardPage} /></Route>
-      <Route path="/fleet"><ProtectedRoute component={FleetPage} /></Route>
-      <Route path="/bookings"><ProtectedRoute component={BookingsPage} /></Route>
-      <Route path="/customers"><ProtectedRoute component={CustomersPage} /></Route>
-      <Route path="/tasks"><ProtectedRoute component={TasksPage} /></Route>
-      <Route path="/notes"><ProtectedRoute component={NotesPage} /></Route>
-      <Route path="/maintenance"><ProtectedRoute component={MaintenancePage} /></Route>
-      <Route path="/settings"><ProtectedRoute component={SettingsPage} /></Route>
-      <Route path="/financial"><ProtectedRoute component={FinancialPage} /></Route>
-      <Route path="/nexus-ultra"><ProtectedRoute component={NexusUltraPage} /></Route>
+      <Route path="/">
+        <ProtectedRoute component={DashboardPage} />
+      </Route>
+      <Route path="/fleet">
+        <ProtectedRoute component={FleetPage} />
+      </Route>
+      <Route path="/bookings">
+        <ProtectedRoute component={BookingsPage} />
+      </Route>
+      <Route path="/customers">
+        <ProtectedRoute component={CustomersPage} />
+      </Route>
+      <Route path="/tasks">
+        <ProtectedRoute component={TasksPage} />
+      </Route>
+      <Route path="/notes">
+        <ProtectedRoute component={NotesPage} />
+      </Route>
+      <Route path="/maintenance">
+        <ProtectedRoute component={MaintenancePage} />
+      </Route>
+      <Route path="/settings">
+        <ProtectedRoute component={SettingsPage} />
+      </Route>
+      <Route path="/financial">
+        <ProtectedRoute component={FinancialPage} />
+      </Route>
+      <Route path="/nexus-ultra">
+        <ProtectedRoute component={NexusUltraPage} />
+      </Route>
       <Route component={NotFound} />
     </Switch>
   );

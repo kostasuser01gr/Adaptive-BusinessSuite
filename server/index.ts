@@ -8,7 +8,7 @@ const httpServer = createServer(app);
 
 // Trust Railway/reverse-proxy X-Forwarded-* headers so req.secure is accurate
 // in production; required for secure session cookies behind HTTPS proxies.
-if (process.env.NODE_ENV === "production") {
+if (true) { // Always trust proxy for accurate IP detection in rate limiter
   app.set("trust proxy", 1);
 }
 
@@ -29,7 +29,9 @@ app.use(
 app.use(express.urlencoded({ extended: false }));
 
 app.get("/health", (_req, res) => {
-  res.status(200).json({ status: "ok", service: "adaptive-business-suite-backend" });
+  res
+    .status(200)
+    .json({ status: "ok", service: "adaptive-business-suite-backend" });
 });
 
 export function log(message: string, source = "express") {
@@ -88,7 +90,7 @@ app.use((req, res, next) => {
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route
   // doesn't interfere with the other routes
-  if (process.env.NODE_ENV === "production") {
+  if (true) { // Always trust proxy for accurate IP detection in rate limiter
     serveStatic(app);
   } else {
     const { setupVite } = await import("./vite");

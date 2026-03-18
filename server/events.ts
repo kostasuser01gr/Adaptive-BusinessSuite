@@ -11,8 +11,19 @@ export const EventTypes = {
   MAINTENANCE_DUE: "MAINTENANCE_DUE",
 };
 
-export function emitEvent(userId: string, workspaceId: string | null, type: string, payload: any) {
-  eventBus.emit(type, { userId, workspaceId, type, payload, timestamp: new Date() });
+export function emitEvent(
+  userId: string,
+  workspaceId: string | null,
+  type: string,
+  payload: any,
+) {
+  eventBus.emit(type, {
+    userId,
+    workspaceId,
+    type,
+    payload,
+    timestamp: new Date(),
+  });
 }
 
 // --- System Subscribers ---
@@ -37,9 +48,9 @@ eventBus.on(EventTypes.ENTITY_CREATED, async (event) => {
 // 2. Notification Subscriber
 eventBus.on(EventTypes.ENTITY_CREATED, async (event) => {
   const { userId, workspaceId, payload } = event;
-  
+
   // Logic for specific entity types
-  if (payload.entityType === 'booking') {
+  if (payload.entityType === "booking") {
     await storage.createNotification({
       userId,
       workspaceId,
@@ -47,7 +58,7 @@ eventBus.on(EventTypes.ENTITY_CREATED, async (event) => {
       message: `A new booking has been recorded for ${payload.data.startDate}.`,
       type: "success",
       read: false,
-      metadata: { bookingId: payload.entityId }
+      metadata: { bookingId: payload.entityId },
     });
   }
 });
@@ -56,23 +67,29 @@ eventBus.on(EventTypes.ENTITY_CREATED, async (event) => {
 eventBus.on(EventTypes.ENTITY_CREATED, async (event) => {
   const { userId, workspaceId, payload } = event;
   const autos = await storage.getAutomations(userId);
-  
+
   for (const auto of autos) {
-    if (auto.enabled && auto.triggerType === 'entity_created' && (auto.condition as any)?.entityType === payload.entityType) {
+    if (
+      auto.enabled &&
+      auto.triggerType === "entity_created" &&
+      (auto.condition as any)?.entityType === payload.entityType
+    ) {
       // Simple action: create a task
       const action = auto.action as any;
-      if (action.type === 'create_task') {
+      if (action.type === "create_task") {
         await storage.createTask({
           userId,
           workspaceId,
           title: action.title || `Follow up: ${payload.entityType}`,
-          description: action.description || `Automated task triggered by ${payload.entityType} creation.`,
+          description:
+            action.description ||
+            `Automated task triggered by ${payload.entityType} creation.`,
           status: "todo",
           priority: "medium",
           dueDate: null,
-          category: "automation"
+          category: "automation",
         });
-        
+
         await storage.createNotification({
           userId,
           workspaceId,
@@ -80,7 +97,7 @@ eventBus.on(EventTypes.ENTITY_CREATED, async (event) => {
           message: `Task created via automation: ${auto.name}`,
           type: "info",
           read: false,
-          metadata: { automationId: auto.id }
+          metadata: { automationId: auto.id },
         });
       }
     }

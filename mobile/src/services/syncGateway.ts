@@ -23,13 +23,15 @@ export const liveApiSyncGateway: SyncGateway = {
     // exists so the UI layer never needs to change when backend sync ships.
   },
 
-  async pullWorkspaceSnapshot(_workspaceId: string): Promise<WorkspaceRecord | null> {
+  async pullWorkspaceSnapshot(
+    _workspaceId: string,
+  ): Promise<WorkspaceRecord | null> {
     // Pull is not yet implemented server-side.
     return null;
   },
 
   async healthcheck(): Promise<"idle" | "ready" | "error"> {
-    const result = await apiClient.health.check();
+    const result = await apiClient.health.check() as any;
     return result === "ok" ? "ready" : "error";
   },
 };

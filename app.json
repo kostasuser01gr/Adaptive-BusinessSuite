@@ -1,0 +1,18 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "4349a1e4-7707-414b-9db1-ab08523353d9"
+      }
+    },
+    "android": {
+      "package": "com.konstantinosf.restexpress"
+    },
+    "ios": {
+      "bundleIdentifier": "com.konstantinosf.restexpress",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    }
+  }
+}

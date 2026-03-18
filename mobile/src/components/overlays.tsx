@@ -11,7 +11,10 @@ import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../app/theme";
 import { AppButton, AppInput, Chip, Panel } from "./ui";
 import { useAppStore } from "../state/store";
-import { useWorkspaceCustomers, useWorkspaceVehicles } from "../state/selectors";
+import {
+  useWorkspaceCustomers,
+  useWorkspaceVehicles,
+} from "../state/selectors";
 
 function FloatingActions() {
   const commandBarOpen = useAppStore((state) => state.ui.commandBarOpen);
@@ -19,7 +22,9 @@ function FloatingActions() {
   const setCommandBarOpen = useAppStore((state) => state.setCommandBarOpen);
   const setQuickCreateOpen = useAppStore((state) => state.setQuickCreateOpen);
   const activeUserId = useAppStore((state) => state.session.activeUserId);
-  const activeWorkspaceId = useAppStore((state) => state.session.activeWorkspaceId);
+  const activeWorkspaceId = useAppStore(
+    (state) => state.session.activeWorkspaceId,
+  );
 
   if (!activeUserId || !activeWorkspaceId) return null;
 
@@ -27,13 +32,19 @@ function FloatingActions() {
     <View pointerEvents="box-none" style={styles.floatingContainer}>
       <Pressable
         onPress={() => setCommandBarOpen(!commandBarOpen)}
-        style={[styles.floatingButton, { backgroundColor: theme.colors.surfaceAlt }]}
+        style={[
+          styles.floatingButton,
+          { backgroundColor: theme.colors.surfaceAlt },
+        ]}
       >
         <Ionicons name="terminal" size={22} color={theme.colors.text} />
       </Pressable>
       <Pressable
         onPress={() => setQuickCreateOpen(!quickCreateOpen, "booking")}
-        style={[styles.floatingButton, { backgroundColor: theme.colors.primary }]}
+        style={[
+          styles.floatingButton,
+          { backgroundColor: theme.colors.primary },
+        ]}
       >
         <Ionicons name="add" size={24} color="#06111D" />
       </Pressable>
@@ -44,7 +55,9 @@ function FloatingActions() {
 function CommandBarModal() {
   const open = useAppStore((state) => state.ui.commandBarOpen);
   const setCommandBarOpen = useAppStore((state) => state.setCommandBarOpen);
-  const sendAssistantCommand = useAppStore((state) => state.sendAssistantCommand);
+  const sendAssistantCommand = useAppStore(
+    (state) => state.sendAssistantCommand,
+  );
   const [command, setCommand] = useState("");
 
   const prompts = [
@@ -55,21 +68,44 @@ function CommandBarModal() {
   ];
 
   return (
-    <Modal transparent animationType="slide" visible={open} onRequestClose={() => setCommandBarOpen(false)}>
+    <Modal
+      transparent
+      animationType="slide"
+      visible={open}
+      onRequestClose={() => setCommandBarOpen(false)}
+    >
       <View style={styles.modalBackdrop}>
-        <Panel style={{ marginTop: "auto", marginHorizontal: theme.spacing.md }}>
+        <Panel
+          style={{ marginTop: "auto", marginHorizontal: theme.spacing.md }}
+        >
           <Text style={styles.modalTitle}>Global Command Bar</Text>
-          <Text style={styles.modalBody}>Preview changes before apply. Commands still work in deterministic mode.</Text>
-          <AppInput value={command} onChangeText={setCommand} placeholder="Type a command..." />
+          <Text style={styles.modalBody}>
+            Preview changes before apply. Commands still work in deterministic
+            mode.
+          </Text>
+          <AppInput
+            value={command}
+            onChangeText={setCommand}
+            placeholder="Type a command..."
+          />
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View style={{ flexDirection: "row", gap: theme.spacing.sm }}>
               {prompts.map((prompt) => (
-                <Chip key={prompt} label={prompt} onPress={() => setCommand(prompt)} />
+                <Chip
+                  key={prompt}
+                  label={prompt}
+                  onPress={() => setCommand(prompt)}
+                />
               ))}
             </View>
           </ScrollView>
           <View style={{ flexDirection: "row", gap: theme.spacing.sm }}>
-            <AppButton label="Close" variant="secondary" onPress={() => setCommandBarOpen(false)} style={{ flex: 1 }} />
+            <AppButton
+              label="Close"
+              variant="secondary"
+              onPress={() => setCommandBarOpen(false)}
+              style={{ flex: 1 }}
+            />
             <AppButton
               label="Run command"
               icon="sparkles"
@@ -103,10 +139,20 @@ function QuickCreateModal() {
   const [title, setTitle] = useState("");
   const [secondary, setSecondary] = useState("");
   const [tertiary, setTertiary] = useState("");
-  const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
-  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(
+    null,
+  );
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(
+    null,
+  );
 
-  const options: Array<typeof target> = ["booking", "vehicle", "customer", "task", "note"];
+  const options: Array<typeof target> = [
+    "booking",
+    "vehicle",
+    "customer",
+    "task",
+    "note",
+  ];
   const heading = useMemo(() => {
     if (target === "vehicle") return "Quick add vehicle";
     if (target === "customer") return "Quick add customer";
@@ -124,9 +170,16 @@ function QuickCreateModal() {
   };
 
   return (
-    <Modal transparent animationType="slide" visible={open} onRequestClose={() => setQuickCreateOpen(false)}>
+    <Modal
+      transparent
+      animationType="slide"
+      visible={open}
+      onRequestClose={() => setQuickCreateOpen(false)}
+    >
       <View style={styles.modalBackdrop}>
-        <Panel style={{ marginTop: "auto", marginHorizontal: theme.spacing.md }}>
+        <Panel
+          style={{ marginTop: "auto", marginHorizontal: theme.spacing.md }}
+        >
           <Text style={styles.modalTitle}>{heading}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View style={{ flexDirection: "row", gap: theme.spacing.sm }}>
@@ -143,33 +196,80 @@ function QuickCreateModal() {
 
           {target === "vehicle" ? (
             <>
-              <AppInput value={title} onChangeText={setTitle} placeholder="Vehicle name" />
-              <AppInput value={secondary} onChangeText={setSecondary} placeholder="Plate" />
-              <AppInput value={tertiary} onChangeText={setTertiary} placeholder="Category" />
+              <AppInput
+                value={title}
+                onChangeText={setTitle}
+                placeholder="Vehicle name"
+              />
+              <AppInput
+                value={secondary}
+                onChangeText={setSecondary}
+                placeholder="Plate"
+              />
+              <AppInput
+                value={tertiary}
+                onChangeText={setTertiary}
+                placeholder="Category"
+              />
             </>
           ) : null}
 
           {target === "customer" ? (
             <>
-              <AppInput value={title} onChangeText={setTitle} placeholder="Customer name" />
-              <AppInput value={secondary} onChangeText={setSecondary} placeholder="Phone" />
-              <AppInput value={tertiary} onChangeText={setTertiary} placeholder="Email" />
+              <AppInput
+                value={title}
+                onChangeText={setTitle}
+                placeholder="Customer name"
+              />
+              <AppInput
+                value={secondary}
+                onChangeText={setSecondary}
+                placeholder="Phone"
+              />
+              <AppInput
+                value={tertiary}
+                onChangeText={setTertiary}
+                placeholder="Email"
+              />
             </>
           ) : null}
 
-          {target === "task" ? <AppInput value={title} onChangeText={setTitle} placeholder="Task title" /> : null}
+          {target === "task" ? (
+            <AppInput
+              value={title}
+              onChangeText={setTitle}
+              placeholder="Task title"
+            />
+          ) : null}
 
           {target === "note" ? (
             <>
-              <AppInput value={title} onChangeText={setTitle} placeholder="Note title" />
-              <AppInput value={secondary} onChangeText={setSecondary} placeholder="Note content" multiline />
+              <AppInput
+                value={title}
+                onChangeText={setTitle}
+                placeholder="Note title"
+              />
+              <AppInput
+                value={secondary}
+                onChangeText={setSecondary}
+                placeholder="Note content"
+                multiline
+              />
             </>
           ) : null}
 
           {target === "booking" ? (
             <>
-              <AppInput value={title} onChangeText={setTitle} placeholder="Pickup location" />
-              <AppInput value={secondary} onChangeText={setSecondary} placeholder="Dropoff location" />
+              <AppInput
+                value={title}
+                onChangeText={setTitle}
+                placeholder="Pickup location"
+              />
+              <AppInput
+                value={secondary}
+                onChangeText={setSecondary}
+                placeholder="Dropoff location"
+              />
               <Text style={styles.modalBody}>Vehicle</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 <View style={{ flexDirection: "row", gap: theme.spacing.sm }}>
@@ -213,22 +313,36 @@ function QuickCreateModal() {
               label="Create"
               onPress={() => {
                 if (target === "vehicle") {
-                  addVehicle({ name: title || "New vehicle", plate: secondary || "TBD", category: tertiary || "sedan" });
+                  addVehicle({
+                    name: title || "New vehicle",
+                    plate: secondary || "TBD",
+                    category: tertiary || "sedan",
+                  });
                 } else if (target === "customer") {
-                  addCustomer({ name: title || "New customer", phone: secondary || "-", email: tertiary || "-" });
+                  addCustomer({
+                    name: title || "New customer",
+                    phone: secondary || "-",
+                    email: tertiary || "-",
+                  });
                 } else if (target === "task") {
                   addTask(title || "New task");
                 } else if (target === "note") {
-                  addNote(title || "Quick note", secondary || "Captured from global quick create.");
+                  addNote(
+                    title || "Quick note",
+                    secondary || "Captured from global quick create.",
+                  );
                 } else {
                   const fallbackVehicle = selectedVehicleId || vehicles[0]?.id;
-                  const fallbackCustomer = selectedCustomerId || customers[0]?.id;
+                  const fallbackCustomer =
+                    selectedCustomerId || customers[0]?.id;
                   if (fallbackVehicle && fallbackCustomer) {
                     addBooking({
                       vehicleId: fallbackVehicle,
                       customerId: fallbackCustomer,
                       pickupAt: new Date().toISOString(),
-                      dropoffAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+                      dropoffAt: new Date(
+                        Date.now() + 24 * 60 * 60 * 1000,
+                      ).toISOString(),
                       amount: 120,
                       pickupLocation: title || "City office",
                       dropoffLocation: secondary || "City office",

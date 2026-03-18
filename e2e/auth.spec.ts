@@ -30,7 +30,7 @@ test.describe("Authentication flows", () => {
 
     // Wait for the register API response and the submit click simultaneously
     const [registerRes] = await Promise.all([
-      page.waitForResponse(r => r.url().includes("/api/auth/register")),
+      page.waitForResponse((r) => r.url().includes("/api/auth/register")),
       page.getByTestId("button-auth-submit").click(),
     ]);
     expect(registerRes.status()).toBe(200);
@@ -58,7 +58,7 @@ test.describe("Authentication flows", () => {
     await page.getByTestId("input-password").fill("TestPass123!");
 
     const [loginRes] = await Promise.all([
-      page.waitForResponse(r => r.url().includes("/api/auth/login")),
+      page.waitForResponse((r) => r.url().includes("/api/auth/login")),
       page.getByTestId("button-auth-submit").click(),
     ]);
     expect(loginRes.status()).toBe(200);
@@ -97,7 +97,9 @@ test.describe("Authentication flows", () => {
 
     // Navigate directly — session cookie shared with browser context
     await page.goto("/");
-    await expect(page.getByTestId("text-dashboard-title")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByTestId("text-dashboard-title")).toBeVisible({
+      timeout: 10000,
+    });
 
     // Logout via API and re-navigate
     await page.request.post("/api/auth/logout");
@@ -133,7 +135,7 @@ test.describe("Authentication flows", () => {
 
     // Playwright stores Set-Cookie into the browser context's jar — inspect it there
     const cookies = await page.context().cookies("http://localhost:5000");
-    const sessionCookie = cookies.find(c => c.name === "connect.sid");
+    const sessionCookie = cookies.find((c) => c.name === "connect.sid");
     expect(sessionCookie, "session cookie must exist").toBeTruthy();
     expect(sessionCookie?.httpOnly).toBe(true);
     // SameSite is stored as "Lax", "Strict", or "None" in Playwright's cookie model

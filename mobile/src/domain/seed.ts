@@ -33,7 +33,11 @@ export interface SeedBundle {
   assistantMemory: AssistantMemoryRecord[];
 }
 
-export function createSeedBundle(ownerId: string, mode: WorkspaceMode, workspaceName?: string): SeedBundle {
+export function createSeedBundle(
+  ownerId: string,
+  mode: WorkspaceMode,
+  workspaceName?: string,
+): SeedBundle {
   const workspace = createWorkspacePreset(mode, ownerId, workspaceName);
   const today = startOfDay(new Date());
 
@@ -273,8 +277,18 @@ export function createSeedBundle(ownerId: string, mode: WorkspaceMode, workspace
   ];
 
   const assistantMemory: AssistantMemoryRecord[] = [
-    { id: createId("memory"), workspaceId: workspace.id, key: "preferred_mode", value: mode },
-    { id: createId("memory"), workspaceId: workspace.id, key: "operator_goal", value: "Move faster with less friction." },
+    {
+      id: createId("memory"),
+      workspaceId: workspace.id,
+      key: "preferred_mode",
+      value: mode,
+    },
+    {
+      id: createId("memory"),
+      workspaceId: workspace.id,
+      key: "operator_goal",
+      value: "Move faster with less friction.",
+    },
   ];
 
   const user: UserProfile = {

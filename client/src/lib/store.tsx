@@ -1,11 +1,17 @@
-import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
-import { api } from './api';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
-import { ontologies, type Ontology, defaultOntology } from '@shared/ontologies';
-import { WebSyncCoordinator } from './sync';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useMemo,
+  useEffect,
+} from "react";
+import { api } from "./api";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { ontologies, type Ontology, defaultOntology } from "@shared/ontologies";
+import { WebSyncCoordinator } from "./sync";
 
-export type UserMode = 'rental' | 'personal' | 'professional' | 'custom';
+export type UserMode = "rental" | "personal" | "professional" | "custom";
 
 export interface ModuleConfig {
   id: string;
@@ -19,7 +25,7 @@ export interface ModuleConfig {
 
 export interface Message {
   id: string;
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string;
   timestamp: Date;
   actions?: string[];
@@ -44,7 +50,11 @@ interface AppContextType {
   currentWorkflow: any[] | null;
   currentGenerativeUI: any | null;
   login: (username: string, password: string) => Promise<void>;
-  register: (username: string, password: string, displayName?: string) => Promise<void>;
+  register: (
+    username: string,
+    password: string,
+    displayName?: string,
+  ) => Promise<void>;
   logout: () => Promise<void>;
   setMode: (mode: UserMode) => Promise<void>;
   removeModule: (id: string) => Promise<void>;
@@ -64,20 +74,42 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   const [isCommandBarOpen, setCommandBarOpen] = useState(false);
   const [currentProposal, setCurrentProposal] = useState<any | null>(null);
   const [currentWorkflow, setCurrentWorkflow] = useState<any[] | null>(null);
-  const [currentGenerativeUI, setCurrentGenerativeUI] = useState<any | null>(null);
+  const [currentGenerativeUI, setCurrentGenerativeUI] = useState<any | null>(
+    null,
+  );
   const qc = useQueryClient();
 
-  const { data: userData, isLoading: userLoading } = useQuery({ queryKey: ['/api/auth/me'], queryFn: api.auth.me, retry: false, staleTime: Infinity });
+  const { data: userData, isLoading: userLoading } = useQuery({
+    queryKey: ["/api/auth/me"],
+    queryFn: api.auth.me,
+    retry: false,
+    staleTime: Infinity,
+  });
   const isAuthenticated = !!userData && !userLoading;
   const user = userData || null;
-  const mode = (user?.mode as UserMode) || 'rental';
+  const mode = (user?.mode as UserMode) || "rental";
 
-  const activeOntology = useMemo(() => ontologies[mode] || defaultOntology, [mode]);
+  const activeOntology = useMemo(
+    () => ontologies[mode] || defaultOntology,
+    [mode],
+  );
 
-  const { data: modulesData } = useQuery({ queryKey: ['/api/modules'], queryFn: api.modules.list, enabled: isAuthenticated });
-  const modules: ModuleConfig[] = (modulesData || []).map((m: any) => ({ ...m, w: parseInt(m.w) || 1, h: parseInt(m.h) || 1 }));
+  const { data: modulesData } = useQuery({
+    queryKey: ["/api/modules"],
+    queryFn: api.modules.list,
+    enabled: isAuthenticated,
+  });
+  const modules: ModuleConfig[] = (modulesData || []).map((m: any) => ({
+    ...m,
+    w: parseInt(m.w) || 1,
+    h: parseInt(m.h) || 1,
+  }));
 
-  const { data: chatData } = useQuery({ queryKey: ['/api/chat'], queryFn: api.chat.list, enabled: isAuthenticated });
+  const { data: chatData } = useQuery({
+    queryKey: ["/api/chat"],
+    queryFn: api.chat.list,
+    enabled: isAuthenticated,
+  });
   const chatHistory: Message[] = (chatData || []).map((m: any) => ({
     id: m.id,
     role: m.role,
@@ -86,21 +118,29 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     actions: m.actions as string[] | undefined,
     proposedAction: m.metadata?.proposedAction,
     workflow: m.metadata?.workflow,
-    generativeUI: m.metadata?.generativeUI
+    generativeUI: m.metadata?.generativeUI,
   }));
 
-  const { data: statsData } = useQuery({ queryKey: ['/api/stats'], queryFn: api.stats, enabled: isAuthenticated });
+  const { data: statsData } = useQuery({
+    queryKey: ["/api/stats"],
+    queryFn: api.stats,
+    enabled: isAuthenticated,
+  });
   const stats = statsData || {};
 
-  const { data: suggestionsData } = useQuery({ queryKey: ['/api/suggestions'], queryFn: api.suggestions, enabled: isAuthenticated });
+  const { data: suggestionsData } = useQuery({
+    queryKey: ["/api/suggestions"],
+    queryFn: api.suggestions,
+    enabled: isAuthenticated,
+  });
   const suggestions = suggestionsData || [];
 
   const refetchAll = () => {
-    qc.invalidateQueries({ queryKey: ['/api/modules'] });
-    qc.invalidateQueries({ queryKey: ['/api/chat'] });
-    qc.invalidateQueries({ queryKey: ['/api/auth/me'] });
-    qc.invalidateQueries({ queryKey: ['/api/stats'] });
-    qc.invalidateQueries({ queryKey: ['/api/suggestions'] });
+    qc.invalidateQueries({ queryKey: ["/api/modules"] });
+    qc.invalidateQueries({ queryKey: ["/api/chat"] });
+    qc.invalidateQueries({ queryKey: ["/api/auth/me"] });
+    qc.invalidateQueries({ queryKey: ["/api/stats"] });
+    qc.invalidateQueries({ queryKey: ["/api/suggestions"] });
   };
 
   // --- Background Sync Integration ---
@@ -112,10 +152,14 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       onSync: (delta) => {
         // Optimistically update caches with delta if needed
         // For now, we simple refresh queries to ensure total consistency
-        if (Object.values(delta).some((arr: any) => Array.isArray(arr) && arr.length > 0)) {
+        if (
+          Object.values(delta).some(
+            (arr: any) => Array.isArray(arr) && arr.length > 0,
+          )
+        ) {
           refetchAll();
         }
-      }
+      },
     });
 
     coordinator.start();
@@ -124,44 +168,54 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (username: string, password: string) => {
     const user = await api.auth.login(username, password);
-    qc.setQueryData(['/api/auth/me'], user);
+    qc.setQueryData(["/api/auth/me"], user);
     toast.success(`Welcome back, ${user.displayName || user.username}`);
     qc.invalidateQueries();
   };
-  const register = async (username: string, password: string, displayName?: string) => {
+  const register = async (
+    username: string,
+    password: string,
+    displayName?: string,
+  ) => {
     const user = await api.auth.register(username, password, displayName);
-    qc.setQueryData(['/api/auth/me'], user);
+    qc.setQueryData(["/api/auth/me"], user);
     toast.success("Account created successfully");
     qc.invalidateQueries();
   };
-  const logout = async () => { await api.auth.logout(); qc.clear(); qc.invalidateQueries({ queryKey: ['/api/auth/me'] }); };
-  
-  const setMode = async (m: UserMode) => { 
-    const prevUser = qc.getQueryData(['/api/auth/me']);
-    qc.setQueryData(['/api/auth/me'], (old: any) => ({ ...old, mode: m }));
+  const logout = async () => {
+    await api.auth.logout();
+    qc.clear();
+    qc.invalidateQueries({ queryKey: ["/api/auth/me"] });
+  };
+
+  const setMode = async (m: UserMode) => {
+    const prevUser = qc.getQueryData(["/api/auth/me"]);
+    qc.setQueryData(["/api/auth/me"], (old: any) => ({ ...old, mode: m }));
     try {
-      await api.user.setMode(m); 
+      await api.user.setMode(m);
       toast.success(`Switched to ${ontologies[m]?.label || m} ontology`);
-      refetchAll(); 
+      refetchAll();
     } catch (e) {
-      qc.setQueryData(['/api/auth/me'], prevUser);
+      qc.setQueryData(["/api/auth/me"], prevUser);
       toast.error("Failed to switch mode");
     }
   };
 
-  const removeModule = async (id: string) => { 
-    const prevModules = qc.getQueryData(['/api/modules']);
-    qc.setQueryData(['/api/modules'], (old: any[]) => old.filter(m => m.id !== id));
+  const removeModule = async (id: string) => {
+    const prevModules = qc.getQueryData(["/api/modules"]);
+    qc.setQueryData(["/api/modules"], (old: any[]) =>
+      old.filter((m) => m.id !== id),
+    );
     try {
-      await api.modules.remove(id); 
-      qc.invalidateQueries({ queryKey: ['/api/modules'] }); 
+      await api.modules.remove(id);
+      qc.invalidateQueries({ queryKey: ["/api/modules"] });
     } catch (e) {
-      qc.setQueryData(['/api/modules'], prevModules);
+      qc.setQueryData(["/api/modules"], prevModules);
       toast.error("Failed to remove module");
     }
   };
 
-  const toggleChat = () => setIsChatOpen(o => !o);
+  const toggleChat = () => setIsChatOpen((o) => !o);
 
   const processCommand = async (command: string) => {
     const result = await api.chat.send(command);
@@ -184,11 +238,11 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     if (!currentProposal) return;
     try {
       await api.applyAction(currentProposal);
-      toast.success('Action applied successfully');
+      toast.success("Action applied successfully");
       setCurrentProposal(null);
       refetchAll();
     } catch (e: any) {
-      toast.error(e.message || 'Failed to apply action');
+      toast.error(e.message || "Failed to apply action");
     }
   };
 
@@ -202,12 +256,14 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
         successCount++;
         toast.info(`Step ${successCount}/${total} completed`);
       } catch (e: any) {
-        toast.error(`Workflow failed at step ${successCount + 1}: ${e.message}`);
+        toast.error(
+          `Workflow failed at step ${successCount + 1}: ${e.message}`,
+        );
         break;
       }
     }
     if (successCount === total) {
-      toast.success('Full workflow executed successfully');
+      toast.success("Full workflow executed successfully");
       setCurrentWorkflow(null);
     }
     refetchAll();
@@ -220,11 +276,36 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AppContext.Provider value={{
-      isAuthenticated, isLoading: userLoading, user, mode, activeOntology, modules, chatHistory, stats, suggestions,
-      isChatOpen, isCommandBarOpen, currentProposal, currentWorkflow, currentGenerativeUI, login, register, logout, setMode, removeModule, toggleChat,
-      setCommandBarOpen, processCommand, applyProposal, applyWorkflow, dismissProposal, refetchAll,
-    }}>
+    <AppContext.Provider
+      value={{
+        isAuthenticated,
+        isLoading: userLoading,
+        user,
+        mode,
+        activeOntology,
+        modules,
+        chatHistory,
+        stats,
+        suggestions,
+        isChatOpen,
+        isCommandBarOpen,
+        currentProposal,
+        currentWorkflow,
+        currentGenerativeUI,
+        login,
+        register,
+        logout,
+        setMode,
+        removeModule,
+        toggleChat,
+        setCommandBarOpen,
+        processCommand,
+        applyProposal,
+        applyWorkflow,
+        dismissProposal,
+        refetchAll,
+      }}
+    >
       {children}
     </AppContext.Provider>
   );
@@ -232,6 +313,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
 
 export const useAppState = () => {
   const context = useContext(AppContext);
-  if (!context) throw new Error('useAppState must be used within AppStateProvider');
+  if (!context)
+    throw new Error("useAppState must be used within AppStateProvider");
   return context;
 };

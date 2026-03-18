@@ -17,41 +17,61 @@ async function registerAndLogin(page: import("@playwright/test").Page) {
 }
 
 test.describe("Dashboard", () => {
-  test("authenticated user sees dashboard with default rental modules", async ({ page }) => {
+  test("authenticated user sees dashboard with default rental modules", async ({
+    page,
+  }) => {
     await registerAndLogin(page);
     await page.goto("/");
 
-    await expect(page.getByTestId("text-dashboard-title")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByTestId("text-dashboard-title")).toBeVisible({
+      timeout: 10000,
+    });
     // Default mode is 'rental', verify the title reflects that
-    await expect(page.getByTestId("text-dashboard-title")).toContainText("Rental");
+    await expect(page.getByTestId("text-dashboard-title")).toContainText(
+      "Rental",
+    );
   });
 
-  test("customize-with-AI button opens the assistant panel", async ({ page }) => {
+  test("customize-with-AI button opens the assistant panel", async ({
+    page,
+  }) => {
     await registerAndLogin(page);
     await page.goto("/");
 
-    await expect(page.getByTestId("text-dashboard-title")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByTestId("text-dashboard-title")).toBeVisible({
+      timeout: 10000,
+    });
     await page.getByTestId("button-open-ai").click();
     // Chat panel should appear — look for the chat input or assistant label
-    await expect(page.getByRole("textbox").or(page.getByPlaceholder(/message|ask|type/i))).toBeVisible({ timeout: 5000 }).catch(() => {
-      // Some implementations open a sidebar/drawer — just verify URL stays at /
-      expect(page.url()).toContain("/");
-    });
+    await expect(
+      page.getByRole("textbox").or(page.getByPlaceholder(/message|ask|type/i)),
+    )
+      .toBeVisible({ timeout: 5000 })
+      .catch(() => {
+        // Some implementations open a sidebar/drawer — just verify URL stays at /
+        expect(page.url()).toContain("/");
+      });
   });
 
-  test("protected route /fleet redirects to /auth when not logged in", async ({ page }) => {
+  test("protected route /fleet redirects to /auth when not logged in", async ({
+    page,
+  }) => {
     await page.request.post("/api/auth/logout");
     await page.goto("/fleet");
     await expect(page).toHaveURL(/\/auth/);
   });
 
-  test("api /api/auth/me returns 401 when not authenticated", async ({ request }) => {
+  test("api /api/auth/me returns 401 when not authenticated", async ({
+    request,
+  }) => {
     // Use a fresh context without session
     const res = await request.get("/api/auth/me");
     expect(res.status()).toBe(401);
   });
 
-  test("api /api/stats returns stats for authenticated user", async ({ page }) => {
+  test("api /api/stats returns stats for authenticated user", async ({
+    page,
+  }) => {
     await registerAndLogin(page);
     // /api/stats is called via page.request which shares the session cookie
     const res = await page.request.get("/api/stats");
@@ -65,7 +85,9 @@ test.describe("Dashboard", () => {
 
   // ── /api/chat endpoint (model gateway) ──
 
-  test("api /api/chat GET returns message history for authenticated user", async ({ page }) => {
+  test("api /api/chat GET returns message history for authenticated user", async ({
+    page,
+  }) => {
     await registerAndLogin(page);
     const res = await page.request.get("/api/chat");
     expect(res.ok()).toBeTruthy();
@@ -80,7 +102,9 @@ test.describe("Dashboard", () => {
     expect(firstMsg.role).toBe("assistant");
   });
 
-  test("api /api/chat POST returns assistant reply with expected shape", async ({ page }) => {
+  test("api /api/chat POST returns assistant reply with expected shape", async ({
+    page,
+  }) => {
     await registerAndLogin(page);
     const res = await page.request.post("/api/chat", {
       data: { content: "add fleet" },
@@ -122,7 +146,9 @@ test.describe("Dashboard", () => {
     expect(body.assistantMessage.role).toBe("assistant");
   });
 
-  test("api /api/chat POST returns 400 when content is missing", async ({ page }) => {
+  test("api /api/chat POST returns 400 when content is missing", async ({
+    page,
+  }) => {
     await registerAndLogin(page);
     const res = await page.request.post("/api/chat", {
       data: {},
@@ -132,19 +158,25 @@ test.describe("Dashboard", () => {
     expect(body).toHaveProperty("message");
   });
 
-  test("api /api/chat POST returns 401 when not authenticated", async ({ request }) => {
+  test("api /api/chat POST returns 401 when not authenticated", async ({
+    request,
+  }) => {
     const res = await request.post("/api/chat", {
       data: { content: "add fleet" },
     });
     expect(res.status()).toBe(401);
   });
 
-  test("api /api/chat GET returns 401 when not authenticated", async ({ request }) => {
+  test("api /api/chat GET returns 401 when not authenticated", async ({
+    request,
+  }) => {
     const res = await request.get("/api/chat");
     expect(res.status()).toBe(401);
   });
 
-  test("api /api/chat POST returns 400 when content exceeds 4000 characters", async ({ page }) => {
+  test("api /api/chat POST returns 400 when content exceeds 4000 characters", async ({
+    page,
+  }) => {
     await registerAndLogin(page);
     const res = await page.request.post("/api/chat", {
       data: { content: "a".repeat(4001) },

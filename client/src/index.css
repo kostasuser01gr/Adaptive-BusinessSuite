@@ -4,14 +4,14 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-sans: 'Inter', sans-serif;
-  --font-heading: 'Plus Jakarta Sans', sans-serif;
+  --font-sans: "Inter", sans-serif;
+  --font-heading: "Plus Jakarta Sans", sans-serif;
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
-  
+
   --color-background: hsl(var(--background));
   --color-foreground: hsl(var(--foreground));
   --color-card: hsl(var(--card));
@@ -45,11 +45,11 @@
   --card-foreground: 240 10% 3.9%;
   --popover: 0 0% 100%;
   --popover-foreground: 240 10% 3.9%;
-  
+
   /* Electric Indigo for Primary */
   --primary: 255 85% 55%;
   --primary-foreground: 0 0% 100%;
-  
+
   --secondary: 240 4.8% 95.9%;
   --secondary-foreground: 240 5.9% 10%;
   --muted: 240 4.8% 95.9%;
@@ -72,11 +72,11 @@
   --card-foreground: 210 20% 98%;
   --popover: 224 71% 6%;
   --popover-foreground: 210 20% 98%;
-  
+
   /* Electric Indigo/Purple for Primary */
   --primary: 258 90% 66%;
   --primary-foreground: 210 20% 98%;
-  
+
   --secondary: 226 58% 10%;
   --secondary-foreground: 210 20% 98%;
   --muted: 226 58% 15%;
@@ -85,7 +85,7 @@
   --accent-foreground: 210 20% 98%;
   --destructive: 0 62.8% 30.6%;
   --destructive-foreground: 210 20% 98%;
-  
+
   /* Subtle glass borders */
   --border: 226 58% 15%;
   --input: 226 58% 15%;
@@ -99,34 +99,63 @@
   body {
     @apply bg-background text-foreground font-sans antialiased overflow-x-hidden;
     /* Subtle mesh gradient background */
-    background-image: 
+    background-image:
       radial-gradient(at 0% 0%, hsla(258, 90%, 66%, 0.05) 0px, transparent 50%),
-      radial-gradient(at 100% 100%, hsla(280, 80%, 50%, 0.05) 0px, transparent 50%);
+      radial-gradient(
+        at 100% 100%,
+        hsla(280, 80%, 50%, 0.05) 0px,
+        transparent 50%
+      );
     background-attachment: fixed;
   }
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     @apply font-heading tracking-tight;
   }
 }
 
 @keyframes accordion-down {
-  from { height: 0; }
-  to { height: var(--radix-accordion-content-height); }
+  from {
+    height: 0;
+  }
+  to {
+    height: var(--radix-accordion-content-height);
+  }
 }
 
 @keyframes accordion-up {
-  from { height: var(--radix-accordion-content-height); }
-  to { height: 0; }
+  from {
+    height: var(--radix-accordion-content-height);
+  }
+  to {
+    height: 0;
+  }
 }
 
 @keyframes in {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes out {
-  from { opacity: 1; transform: translateY(0); }
-  to { opacity: 0; transform: translateY(10px); }
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(10px);
+  }
 }
 
 /* Glassmorphism utilities */

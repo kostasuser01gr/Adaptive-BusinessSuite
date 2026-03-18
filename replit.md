@@ -1,9 +1,11 @@
 # Nexus OS — AI-Native Adaptive Operational Platform
 
 ## Overview
+
 Nexus OS is a full-scale adaptive operational platform designed for car rental entrepreneurs, fully customizable for personal and professional use. It features an AI-driven workspace assistant, modular dashboards, deep car rental operational workflows, and responsive design across all devices.
 
 ## Architecture
+
 - **Frontend**: React + TypeScript + Vite, TailwindCSS v4, shadcn/ui components, wouter routing, TanStack Query
 - **Backend**: Express.js + TypeScript, session-based auth (express-session + memorystore)
 - **Database**: PostgreSQL with Drizzle ORM
@@ -11,6 +13,7 @@ Nexus OS is a full-scale adaptive operational platform designed for car rental e
 - **Theme**: Deep-space dark aesthetic with electric purple/indigo primary, glass cards, subtle gradient backgrounds
 
 ## Key Features
+
 - **Auth**: Sign up / login with session-based auth (30-day sessions)
 - **Workspace Modes**: Rental, Personal, Professional — each seeds default dashboard modules
 - **Modular Dashboard**: Grid-based layout with KPI, Fleet, Bookings, Tasks, Notes, Quick Actions, Daily Overview widgets
@@ -27,9 +30,11 @@ Nexus OS is a full-scale adaptive operational platform designed for car rental e
 - **Proactive Suggestions**: Context-aware setup and workflow suggestions
 
 ## Database Schema (PostgreSQL)
+
 Tables: users, workspaces, modules, chat_messages, vehicles, customers, bookings, maintenance_records, tasks, notes, action_history, assistant_memory
 
 ## Project Structure
+
 ```
 shared/schema.ts          — Drizzle schema + types for all tables
 server/routes.ts          — All API routes (auth, CRUD, assistant, stats, suggestions)
@@ -67,6 +72,7 @@ client/src/pages/
 ```
 
 ## API Endpoints
+
 - `POST /api/auth/register|login|logout`, `GET /api/auth/me`
 - `PATCH /api/user/mode|preferences`
 - `GET|POST /api/modules`, `PATCH|DELETE /api/modules/:id`
@@ -78,6 +84,7 @@ client/src/pages/
 - `GET /api/actions` (action history)
 
 ## User Preferences
+
 - Passwords stored as plaintext (demo only)
 - Sessions persist 30 days
 - Mode switching reseeds all dashboard modules

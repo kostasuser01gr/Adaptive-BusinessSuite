@@ -1,4 +1,4 @@
-import { api } from './api';
+import { api } from "./api";
 
 export interface SyncConfig {
   userId: string;
@@ -17,7 +17,7 @@ export class WebSyncCoordinator {
 
   async start() {
     if (this.timer) return;
-    
+
     // Initial pull
     await this.sync();
 
@@ -35,14 +35,14 @@ export class WebSyncCoordinator {
   private async sync() {
     try {
       const data = await api.sync.pull(this.lastSyncTimestamp);
-      
+
       // Update local timestamp
       this.lastSyncTimestamp = data.lastSyncTimestamp;
 
       // Notify store of new data
       this.config.onSync(data);
     } catch (err) {
-      console.error('[WebSync] Pull failed:', err);
+      console.error("[WebSync] Pull failed:", err);
     }
   }
 

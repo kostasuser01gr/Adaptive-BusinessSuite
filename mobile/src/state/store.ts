@@ -1,4 +1,4 @@
-import * as Haptics from 'expo-haptics';
+import * as Haptics from "expo-haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
@@ -28,7 +28,11 @@ import {
 } from "../domain/models";
 import { createSeedBundle } from "../domain/seed";
 import { getModelAdapter } from "../services/assistant";
-import { applySuggestionToWorkspace, cloneWorkspace, resetWorkspaceToPreset } from "../services/customization";
+import {
+  applySuggestionToWorkspace,
+  cloneWorkspace,
+  resetWorkspaceToPreset,
+} from "../services/customization";
 import { noopSyncGateway } from "../services/syncGateway";
 
 type QuickCreateTarget = "vehicle" | "booking" | "customer" | "task" | "note";
@@ -60,8 +64,15 @@ export interface AppStore {
   modelSettings: ModelSettings;
   setHasHydrated: (value: boolean) => void;
   initializeDemoData: () => void;
-  register: (username: string, displayName: string, password: string) => { ok: boolean; error?: string };
-  login: (username: string, password: string) => { ok: boolean; error?: string };
+  register: (
+    username: string,
+    displayName: string,
+    password: string,
+  ) => { ok: boolean; error?: string };
+  login: (
+    username: string,
+    password: string,
+  ) => { ok: boolean; error?: string };
   logout: () => void;
   completeOnboarding: (mode: WorkspaceMode, workspaceName: string) => void;
   switchWorkspace: (workspaceId: string) => void;
@@ -69,9 +80,17 @@ export interface AppStore {
   resetActiveWorkspaceToPreset: () => void;
   setCommandBarOpen: (open: boolean) => void;
   setQuickCreateOpen: (open: boolean, target?: QuickCreateTarget) => void;
-  addVehicle: (payload: { name: string; plate: string; category: string }) => void;
+  addVehicle: (payload: {
+    name: string;
+    plate: string;
+    category: string;
+  }) => void;
   updateVehicle: (vehicleId: string, updates: Partial<Vehicle>) => void;
-  addCustomer: (payload: { name: string; phone: string; email: string }) => void;
+  addCustomer: (payload: {
+    name: string;
+    phone: string;
+    email: string;
+  }) => void;
   updateCustomer: (customerId: string, updates: Partial<Customer>) => void;
   addBooking: (payload: {
     vehicleId: string;
@@ -84,14 +103,22 @@ export interface AppStore {
   }) => string | null;
   extendBooking: (bookingId: string, days: number) => void;
   markBookingReturned: (bookingId: string) => void;
-  addMaintenanceItem: (payload: { vehicleId: string; title: string; urgency: "low" | "medium" | "high"; dueOn: string }) => void;
+  addMaintenanceItem: (payload: {
+    vehicleId: string;
+    title: string;
+    urgency: "low" | "medium" | "high";
+    dueOn: string;
+  }) => void;
   resolveMaintenanceItem: (maintenanceId: string) => void;
   addTask: (title: string) => void;
   updateTaskStatus: (taskId: string, status: TaskRecord["status"]) => void;
   addNote: (title: string, content: string) => void;
   toggleNotePin: (noteId: string) => void;
   markNotificationRead: (notificationId: string) => void;
-  sendAssistantCommand: (command: string, source?: 'text' | 'voice') => Promise<void>;
+  sendAssistantCommand: (
+    command: string,
+    source?: "text" | "voice",
+  ) => Promise<void>;
   applySuggestion: (suggestionId: string) => void;
   dismissSuggestion: (suggestionId: string) => void;
   rollbackHistoryEntry: (historyId: string) => void;
@@ -102,7 +129,8 @@ const initialModelSettings: ModelSettings = {
   activeProvider: "none",
   fallbackModeEnabled: true,
   activeModelLabel: "Deterministic local mode",
-  capabilityProfile: "Command parsing, proposals, and rule-based recommendations",
+  capabilityProfile:
+    "Command parsing, proposals, and rule-based recommendations",
   backendBaseUrl: "",
 };
 
@@ -113,14 +141,23 @@ const initialUiState: UiState = {
 };
 
 function getActiveUser(state: Pick<AppStore, "session" | "users">) {
-  return state.users.find((user) => user.id === state.session.activeUserId) || null;
+  return (
+    state.users.find((user) => user.id === state.session.activeUserId) || null
+  );
 }
 
 function getActiveWorkspace(state: Pick<AppStore, "session" | "workspaces">) {
-  return state.workspaces.find((workspace) => workspace.id === state.session.activeWorkspaceId) || null;
+  return (
+    state.workspaces.find(
+      (workspace) => workspace.id === state.session.activeWorkspaceId,
+    ) || null
+  );
 }
 
-function summarizeContext(state: AppStore, workspace: WorkspaceRecord): AssistantContextSnapshot {
+function summarizeContext(
+  state: AppStore,
+  workspace: WorkspaceRecord,
+): AssistantContextSnapshot {
   const todayKey = new Date().toDateString();
   return {
     workspace,
@@ -131,13 +168,19 @@ function summarizeContext(state: AppStore, workspace: WorkspaceRecord): Assistan
         booking.status !== "returned",
     ).length,
     activeBookingsCount: state.bookings.filter(
-      (booking) => booking.workspaceId === workspace.id && (booking.status === "active" || booking.status === "late"),
+      (booking) =>
+        booking.workspaceId === workspace.id &&
+        (booking.status === "active" || booking.status === "late"),
     ).length,
     availableVehiclesCount: state.vehicles.filter(
-      (vehicle) => vehicle.workspaceId === workspace.id && vehicle.status === "available",
+      (vehicle) =>
+        vehicle.workspaceId === workspace.id && vehicle.status === "available",
     ).length,
     overdueTasksCount: state.tasks.filter(
-      (task) => task.workspaceId === workspace.id && task.status !== "done" && new Date(task.dueOn) < new Date(),
+      (task) =>
+        task.workspaceId === workspace.id &&
+        task.status !== "done" &&
+        new Date(task.dueOn) < new Date(),
     ).length,
   };
 }
@@ -178,7 +221,9 @@ export const useAppStore = create<AppStore>()(
         }
       },
       register: (username, displayName, password) => {
-        const existing = get().users.find((user) => user.username.toLowerCase() === username.toLowerCase());
+        const existing = get().users.find(
+          (user) => user.username.toLowerCase() === username.toLowerCase(),
+        );
         if (existing) {
           return { ok: false, error: "Username already exists locally." };
         }
@@ -201,13 +246,17 @@ export const useAppStore = create<AppStore>()(
       },
       login: (username, password) => {
         const user = get().users.find(
-          (candidate) => candidate.username.toLowerCase() === username.toLowerCase() && candidate.password === password,
+          (candidate) =>
+            candidate.username.toLowerCase() === username.toLowerCase() &&
+            candidate.password === password,
         );
         if (!user) {
           return { ok: false, error: "Invalid local credentials." };
         }
 
-        const firstWorkspace = get().workspaces.find((workspace) => workspace.ownerId === user.id) || null;
+        const firstWorkspace =
+          get().workspaces.find((workspace) => workspace.ownerId === user.id) ||
+          null;
         set({
           session: {
             activeUserId: user.id,
@@ -216,27 +265,46 @@ export const useAppStore = create<AppStore>()(
         });
         return { ok: true };
       },
-      logout: () => set({ session: { activeUserId: null, activeWorkspaceId: null }, ui: initialUiState }),
+      logout: () =>
+        set({
+          session: { activeUserId: null, activeWorkspaceId: null },
+          ui: initialUiState,
+        }),
       completeOnboarding: (mode, workspaceName) => {
         const user = getActiveUser(get());
         if (!user) return;
 
-        const seed = createSeedBundle(user.id, mode, workspaceName || workspaceNameForMode(mode));
+        const seed = createSeedBundle(
+          user.id,
+          mode,
+          workspaceName || workspaceNameForMode(mode),
+        );
         const seededUser = { ...user, onboardingComplete: true };
 
         set((state) => ({
-          users: state.users.map((candidate) => (candidate.id === user.id ? seededUser : candidate)),
-          session: { activeUserId: user.id, activeWorkspaceId: seed.workspace.id },
+          users: state.users.map((candidate) =>
+            candidate.id === user.id ? seededUser : candidate,
+          ),
+          session: {
+            activeUserId: user.id,
+            activeWorkspaceId: seed.workspace.id,
+          },
           workspaces: [...state.workspaces, seed.workspace],
           vehicles: [...state.vehicles, ...seed.vehicles],
           customers: [...state.customers, ...seed.customers],
           bookings: [...state.bookings, ...seed.bookings],
-          maintenanceItems: [...state.maintenanceItems, ...seed.maintenanceItems],
+          maintenanceItems: [
+            ...state.maintenanceItems,
+            ...seed.maintenanceItems,
+          ],
           tasks: [...state.tasks, ...seed.tasks],
           notes: [...state.notes, ...seed.notes],
           notifications: [...state.notifications, ...seed.notifications],
           financeSummaries: [...state.financeSummaries, seed.finance],
-          assistantMessages: [...state.assistantMessages, ...seed.assistantMessages],
+          assistantMessages: [
+            ...state.assistantMessages,
+            ...seed.assistantMessages,
+          ],
           assistantMemory: [...state.assistantMemory, ...seed.assistantMemory],
           history: [
             ...state.history,
@@ -258,19 +326,29 @@ export const useAppStore = create<AppStore>()(
       createWorkspace: (mode, workspaceName) => {
         const user = getActiveUser(get());
         if (!user) return;
-        const seed = createSeedBundle(user.id, mode, workspaceName || workspaceNameForMode(mode));
+        const seed = createSeedBundle(
+          user.id,
+          mode,
+          workspaceName || workspaceNameForMode(mode),
+        );
 
         set((state) => ({
           workspaces: [...state.workspaces, seed.workspace],
           vehicles: [...state.vehicles, ...seed.vehicles],
           customers: [...state.customers, ...seed.customers],
           bookings: [...state.bookings, ...seed.bookings],
-          maintenanceItems: [...state.maintenanceItems, ...seed.maintenanceItems],
+          maintenanceItems: [
+            ...state.maintenanceItems,
+            ...seed.maintenanceItems,
+          ],
           tasks: [...state.tasks, ...seed.tasks],
           notes: [...state.notes, ...seed.notes],
           notifications: [...state.notifications, ...seed.notifications],
           financeSummaries: [...state.financeSummaries, seed.finance],
-          assistantMessages: [...state.assistantMessages, ...seed.assistantMessages],
+          assistantMessages: [
+            ...state.assistantMessages,
+            ...seed.assistantMessages,
+          ],
           assistantMemory: [...state.assistantMemory, ...seed.assistantMemory],
           session: { ...state.session, activeWorkspaceId: seed.workspace.id },
           history: [
@@ -292,7 +370,9 @@ export const useAppStore = create<AppStore>()(
         const snapshot = cloneWorkspace(workspace);
         const reset = resetWorkspaceToPreset(workspace);
         set((state) => ({
-          workspaces: state.workspaces.map((candidate) => (candidate.id === reset.id ? reset : candidate)),
+          workspaces: state.workspaces.map((candidate) =>
+            candidate.id === reset.id ? reset : candidate,
+          ),
           history: [
             ...state.history,
             {
@@ -307,7 +387,8 @@ export const useAppStore = create<AppStore>()(
           ],
         }));
       },
-      setCommandBarOpen: (open) => set((state) => ({ ui: { ...state.ui, commandBarOpen: open } })),
+      setCommandBarOpen: (open) =>
+        set((state) => ({ ui: { ...state.ui, commandBarOpen: open } })),
       setQuickCreateOpen: (open, target) =>
         set((state) => ({
           ui: {
@@ -338,7 +419,9 @@ export const useAppStore = create<AppStore>()(
       updateVehicle: (vehicleId, updates) => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         set((state) => ({
-          vehicles: state.vehicles.map((vehicle) => (vehicle.id === vehicleId ? { ...vehicle, ...updates } : vehicle)),
+          vehicles: state.vehicles.map((vehicle) =>
+            vehicle.id === vehicleId ? { ...vehicle, ...updates } : vehicle,
+          ),
         }));
       },
       addCustomer: ({ name, phone, email }) => {
@@ -358,9 +441,19 @@ export const useAppStore = create<AppStore>()(
       },
       updateCustomer: (customerId, updates) =>
         set((state) => ({
-          customers: state.customers.map((customer) => (customer.id === customerId ? { ...customer, ...updates } : customer)),
+          customers: state.customers.map((customer) =>
+            customer.id === customerId ? { ...customer, ...updates } : customer,
+          ),
         })),
-      addBooking: ({ vehicleId, customerId, pickupAt, dropoffAt, amount, pickupLocation, dropoffLocation }) => {
+      addBooking: ({
+        vehicleId,
+        customerId,
+        pickupAt,
+        dropoffAt,
+        amount,
+        pickupLocation,
+        dropoffLocation,
+      }) => {
         const workspace = getActiveWorkspace(get());
         if (!workspace) return "No active workspace.";
 
@@ -387,7 +480,11 @@ export const useAppStore = create<AppStore>()(
           notes: overlap ? "Conflict warning placeholder triggered." : "",
         };
 
-        Haptics.notificationAsync(overlap ? Haptics.NotificationFeedbackType.Warning : Haptics.NotificationFeedbackType.Success);
+        Haptics.notificationAsync(
+          overlap
+            ? Haptics.NotificationFeedbackType.Warning
+            : Haptics.NotificationFeedbackType.Success,
+        );
         set((state) => ({
           bookings: [booking, ...state.bookings],
           notifications: overlap
@@ -406,7 +503,9 @@ export const useAppStore = create<AppStore>()(
             : state.notifications,
         }));
 
-        return overlap ? "Conflict warning: overlapping booking detected." : null;
+        return overlap
+          ? "Conflict warning: overlapping booking detected."
+          : null;
       },
       extendBooking: (bookingId, days) => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -415,7 +514,10 @@ export const useAppStore = create<AppStore>()(
             booking.id === bookingId
               ? {
                   ...booking,
-                  dropoffAt: new Date(new Date(booking.dropoffAt).getTime() + days * 24 * 60 * 60 * 1000).toISOString(),
+                  dropoffAt: new Date(
+                    new Date(booking.dropoffAt).getTime() +
+                      days * 24 * 60 * 60 * 1000,
+                  ).toISOString(),
                 }
               : booking,
           ),
@@ -425,12 +527,22 @@ export const useAppStore = create<AppStore>()(
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         set((state) => ({
           bookings: state.bookings.map((booking) =>
-            booking.id === bookingId ? { ...booking, status: "returned" } : booking,
+            booking.id === bookingId
+              ? { ...booking, status: "returned" }
+              : booking,
           ),
           vehicles: state.vehicles.map((vehicle) => {
-            const booking = state.bookings.find((candidate) => candidate.id === bookingId);
+            const booking = state.bookings.find(
+              (candidate) => candidate.id === bookingId,
+            );
             if (!booking) return vehicle;
-            return vehicle.id === booking.vehicleId ? { ...vehicle, status: "available", availabilityLabel: "Ready now" } : vehicle;
+            return vehicle.id === booking.vehicleId
+              ? {
+                  ...vehicle,
+                  status: "available",
+                  availabilityLabel: "Ready now",
+                }
+              : vehicle;
           }),
         }));
       },
@@ -483,7 +595,9 @@ export const useAppStore = create<AppStore>()(
       updateTaskStatus: (taskId, status) => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         set((state) => ({
-          tasks: state.tasks.map((task) => (task.id === taskId ? { ...task, status } : task)),
+          tasks: state.tasks.map((task) =>
+            task.id === taskId ? { ...task, status } : task,
+          ),
         }));
       },
       addNote: (title, content) => {
@@ -507,15 +621,19 @@ export const useAppStore = create<AppStore>()(
       },
       toggleNotePin: (noteId) =>
         set((state) => ({
-          notes: state.notes.map((note) => (note.id === noteId ? { ...note, pinned: !note.pinned } : note)),
+          notes: state.notes.map((note) =>
+            note.id === noteId ? { ...note, pinned: !note.pinned } : note,
+          ),
         })),
       markNotificationRead: (notificationId) =>
         set((state) => ({
           notifications: state.notifications.map((notification) =>
-            notification.id === notificationId ? { ...notification, read: true } : notification,
+            notification.id === notificationId
+              ? { ...notification, read: true }
+              : notification,
           ),
         })),
-      sendAssistantCommand: async (command, source = 'text') => {
+      sendAssistantCommand: async (command, source = "text") => {
         const state = get();
         const workspace = getActiveWorkspace(state);
         if (!workspace) return;
@@ -530,7 +648,9 @@ export const useAppStore = create<AppStore>()(
           createdAt: nowIso(),
         };
 
-        const interpretation = await getModelAdapter(state.modelSettings).interpret(command, summarizeContext(state, workspace), source);
+        const interpretation = await getModelAdapter(
+          state.modelSettings,
+        ).interpret(command, summarizeContext(state, workspace), source);
         const assistantMessage: AssistantMessage = {
           id: createId("message"),
           workspaceId: workspace.id,
@@ -540,19 +660,34 @@ export const useAppStore = create<AppStore>()(
         };
 
         set((current) => ({
-          assistantMessages: [...current.assistantMessages, userMessage, assistantMessage],
-          assistantSuggestions: [...current.assistantSuggestions, ...interpretation.suggestions],
-          assistantMemory: [...current.assistantMemory, ...(interpretation.memoryUpdates || [])],
+          assistantMessages: [
+            ...current.assistantMessages,
+            userMessage,
+            assistantMessage,
+          ],
+          assistantSuggestions: [
+            ...current.assistantSuggestions,
+            ...interpretation.suggestions,
+          ],
+          assistantMemory: [
+            ...current.assistantMemory,
+            ...(interpretation.memoryUpdates || []),
+          ],
         }));
       },
       applySuggestion: (suggestionId) => {
         const state = get();
-        const suggestion = state.assistantSuggestions.find((candidate) => candidate.id === suggestionId);
+        const suggestion = state.assistantSuggestions.find(
+          (candidate) => candidate.id === suggestionId,
+        );
         const workspace = getActiveWorkspace(state);
         if (!suggestion || !workspace) return;
 
         const snapshot = cloneWorkspace(workspace);
-        const updatedWorkspace = applySuggestionToWorkspace(workspace, suggestion);
+        const updatedWorkspace = applySuggestionToWorkspace(
+          workspace,
+          suggestion,
+        );
 
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         set((current) => ({
@@ -560,7 +695,9 @@ export const useAppStore = create<AppStore>()(
             candidate.id === updatedWorkspace.id ? updatedWorkspace : candidate,
           ),
           assistantSuggestions: current.assistantSuggestions.map((candidate) =>
-            candidate.id === suggestionId ? { ...candidate, status: "applied" } : candidate,
+            candidate.id === suggestionId
+              ? { ...candidate, status: "applied" }
+              : candidate,
           ),
           assistantMessages: [
             ...current.assistantMessages,
@@ -592,18 +729,24 @@ export const useAppStore = create<AppStore>()(
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         set((state) => ({
           assistantSuggestions: state.assistantSuggestions.map((candidate) =>
-            candidate.id === suggestionId ? { ...candidate, status: "dismissed" } : candidate,
+            candidate.id === suggestionId
+              ? { ...candidate, status: "dismissed" }
+              : candidate,
           ),
         }));
       },
       rollbackHistoryEntry: (historyId) => {
-        const entry = get().history.find((candidate) => candidate.id === historyId);
+        const entry = get().history.find(
+          (candidate) => candidate.id === historyId,
+        );
         if (!entry?.previousWorkspaceSnapshot) return;
 
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
         set((state) => ({
           workspaces: state.workspaces.map((workspace) =>
-            workspace.id === entry.workspaceId ? entry.previousWorkspaceSnapshot! : workspace,
+            workspace.id === entry.workspaceId
+              ? entry.previousWorkspaceSnapshot!
+              : workspace,
           ),
           history: [
             ...state.history,
@@ -612,7 +755,8 @@ export const useAppStore = create<AppStore>()(
               workspaceId: entry.workspaceId,
               type: "rollback",
               title: `Rollback: ${entry.title}`,
-              description: "Restored the previous workspace configuration snapshot.",
+              description:
+                "Restored the previous workspace configuration snapshot.",
               createdAt: nowIso(),
             },
           ],
@@ -651,4 +795,6 @@ export const useAppStore = create<AppStore>()(
   ),
 );
 
-function baseFilter(items: any[]) { return items; }
+function baseFilter(items: any[]) {
+  return items;
+}

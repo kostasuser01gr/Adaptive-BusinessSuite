@@ -17,12 +17,17 @@ async function getStorage() {
 }
 
 // Unique prefix to isolate test data across parallel runs
-const uid = () => `test-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+const uid = () =>
+  `test-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
 skip("storage: create and retrieve user", async () => {
   const s = await getStorage();
   const username = uid();
-  const user = await s.createUser({ username, password: "hashed.salt", mode: "rental" });
+  const user = await s.createUser({
+    username,
+    password: "hashed.salt",
+    mode: "rental",
+  });
   assert.equal(user.username, username);
   assert.equal(user.mode, "rental");
 
@@ -35,7 +40,11 @@ skip("storage: create and retrieve user", async () => {
 
 skip("storage: create booking with Date objects", async () => {
   const s = await getStorage();
-  const user = await s.createUser({ username: uid(), password: "hashed.salt", mode: "rental" });
+  const user = await s.createUser({
+    username: uid(),
+    password: "hashed.salt",
+    mode: "rental",
+  });
 
   const start = new Date("2025-06-01T00:00:00.000Z");
   const end = new Date("2025-06-07T00:00:00.000Z");
@@ -57,7 +66,11 @@ skip("storage: create booking with Date objects", async () => {
 
 skip("storage: create booking with null dates", async () => {
   const s = await getStorage();
-  const user = await s.createUser({ username: uid(), password: "hashed.salt", mode: "rental" });
+  const user = await s.createUser({
+    username: uid(),
+    password: "hashed.salt",
+    mode: "rental",
+  });
 
   const booking = await s.createBooking({
     userId: user.id,
@@ -73,7 +86,11 @@ skip("storage: create booking with null dates", async () => {
 
 skip("storage: update booking status and dates", async () => {
   const s = await getStorage();
-  const user = await s.createUser({ username: uid(), password: "hashed.salt", mode: "rental" });
+  const user = await s.createUser({
+    username: uid(),
+    password: "hashed.salt",
+    mode: "rental",
+  });
   const booking = await s.createBooking({ userId: user.id, status: "pending" });
 
   const updated = await s.updateBooking(booking.id, {
@@ -86,7 +103,11 @@ skip("storage: update booking status and dates", async () => {
 
 skip("storage: create maintenance record with dates", async () => {
   const s = await getStorage();
-  const user = await s.createUser({ username: uid(), password: "hashed.salt", mode: "rental" });
+  const user = await s.createUser({
+    username: uid(),
+    password: "hashed.salt",
+    mode: "rental",
+  });
 
   const scheduled = new Date("2025-08-01T00:00:00.000Z");
   const rec = await s.createMaintenance({
@@ -106,7 +127,11 @@ skip("storage: create maintenance record with dates", async () => {
 
 skip("storage: vehicle CRUD", async () => {
   const s = await getStorage();
-  const user = await s.createUser({ username: uid(), password: "hashed.salt", mode: "rental" });
+  const user = await s.createUser({
+    username: uid(),
+    password: "hashed.salt",
+    mode: "rental",
+  });
 
   const vehicle = await s.createVehicle({
     userId: user.id,
@@ -127,7 +152,11 @@ skip("storage: vehicle CRUD", async () => {
 
 skip("storage: memory key-value upsert", async () => {
   const s = await getStorage();
-  const user = await s.createUser({ username: uid(), password: "hashed.salt", mode: "rental" });
+  const user = await s.createUser({
+    username: uid(),
+    password: "hashed.salt",
+    mode: "rental",
+  });
 
   const first = await s.setMemory(user.id, "theme", "dark");
   assert.equal(first.value, "dark");

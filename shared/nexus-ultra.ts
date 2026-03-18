@@ -1,5 +1,8 @@
 export type NexusSignal = "healthy" | "attention" | "critical" | "planned";
-export type NexusComplianceStatus = "COMPLIANT" | "IN_PROGRESS" | "NOT_APPLICABLE";
+export type NexusComplianceStatus =
+  | "COMPLIANT"
+  | "IN_PROGRESS"
+  | "NOT_APPLICABLE";
 
 export interface NexusMetric {
   label: string;

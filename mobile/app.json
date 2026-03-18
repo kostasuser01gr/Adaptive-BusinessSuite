@@ -31,8 +31,6 @@
     "extra": {
       "appTag": "expo-go-first"
     },
-    "plugins": [
-      "expo-font"
-    ]
+    "plugins": ["expo-font"]
   }
 }

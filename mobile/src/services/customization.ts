@@ -9,13 +9,18 @@ export function cloneWorkspace(workspace: WorkspaceRecord): WorkspaceRecord {
   return JSON.parse(JSON.stringify(workspace)) as WorkspaceRecord;
 }
 
-function upsertByLabel<T extends { title?: string; label?: string; id: string }>(items: T[], next: T) {
+function upsertByLabel<
+  T extends { title?: string; label?: string; id: string },
+>(items: T[], next: T) {
   const key = next.title ?? next.label;
   const exists = items.some((item) => (item.title ?? item.label) === key);
   return exists ? items : [...items, next];
 }
 
-export function applySuggestionToWorkspace(workspace: WorkspaceRecord, suggestion: AssistantSuggestion): WorkspaceRecord {
+export function applySuggestionToWorkspace(
+  workspace: WorkspaceRecord,
+  suggestion: AssistantSuggestion,
+): WorkspaceRecord {
   const next = cloneWorkspace(workspace);
 
   switch (suggestion.action.type) {
@@ -29,10 +34,16 @@ export function applySuggestionToWorkspace(workspace: WorkspaceRecord, suggestio
       );
       break;
     case "add-quick-action":
-      next.quickActions = upsertByLabel(next.quickActions, suggestion.action.quickAction);
+      next.quickActions = upsertByLabel(
+        next.quickActions,
+        suggestion.action.quickAction,
+      );
       break;
     case "add-widget":
-      next.dashboardWidgets = upsertByLabel(next.dashboardWidgets, suggestion.action.widget);
+      next.dashboardWidgets = upsertByLabel(
+        next.dashboardWidgets,
+        suggestion.action.widget,
+      );
       const nextWidgetIds = next.dashboardWidgets.map((widget) => widget.id);
       next.savedLayouts = next.savedLayouts.map((layout) =>
         layout.id === next.activeLayoutId
@@ -41,7 +52,12 @@ export function applySuggestionToWorkspace(workspace: WorkspaceRecord, suggestio
       );
       break;
     case "switch-mode": {
-      const reset = createWorkspacePreset(suggestion.action.mode, workspace.ownerId, workspace.name, workspace.id);
+      const reset = createWorkspacePreset(
+        suggestion.action.mode,
+        workspace.ownerId,
+        workspace.name,
+        workspace.id,
+      );
       next.mode = reset.mode;
       next.modules = reset.modules;
       next.dashboardWidgets = reset.dashboardWidgets;
@@ -52,7 +68,10 @@ export function applySuggestionToWorkspace(workspace: WorkspaceRecord, suggestio
     }
     case "create-workflow":
       next.modules = upsertByLabel(next.modules, suggestion.action.module);
-      next.quickActions = upsertByLabel(next.quickActions, suggestion.action.quickAction);
+      next.quickActions = upsertByLabel(
+        next.quickActions,
+        suggestion.action.quickAction,
+      );
       break;
     case "noop":
       break;
@@ -62,8 +81,15 @@ export function applySuggestionToWorkspace(workspace: WorkspaceRecord, suggestio
   return next;
 }
 
-export function resetWorkspaceToPreset(workspace: WorkspaceRecord): WorkspaceRecord {
-  const reset = createWorkspacePreset(workspace.mode, workspace.ownerId, workspace.name, workspace.id);
+export function resetWorkspaceToPreset(
+  workspace: WorkspaceRecord,
+): WorkspaceRecord {
+  const reset = createWorkspacePreset(
+    workspace.mode,
+    workspace.ownerId,
+    workspace.name,
+    workspace.id,
+  );
   reset.customFields = workspace.customFields;
   reset.updatedAt = nowIso();
   return reset;

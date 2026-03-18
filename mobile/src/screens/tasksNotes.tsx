@@ -1,6 +1,13 @@
 import React, { useState } from "react";
 import { Text, View } from "react-native";
-import { AppButton, AppInput, Panel, Screen, SectionHeader, StatusBadge } from "../components/ui";
+import {
+  AppButton,
+  AppInput,
+  Panel,
+  Screen,
+  SectionHeader,
+  StatusBadge,
+} from "../components/ui";
 import { theme } from "../app/theme";
 import { useAppStore } from "../state/store";
 import { useWorkspaceNotes, useWorkspaceTasks } from "../state/selectors";
@@ -16,10 +23,20 @@ export function TasksScreen({ navigation }: any) {
       <SectionHeader
         title="Tasks"
         subtitle="Operational execution with a lightweight assignment placeholder."
-        action={<AppButton label="Notes" variant="secondary" onPress={() => navigation.navigate("Notes")} />}
+        action={
+          <AppButton
+            label="Notes"
+            variant="secondary"
+            onPress={() => navigation.navigate("Notes")}
+          />
+        }
       />
       <Panel>
-        <AppInput value={title} onChangeText={setTitle} placeholder="Add task" />
+        <AppInput
+          value={title}
+          onChangeText={setTitle}
+          placeholder="Add task"
+        />
         <AppButton
           label="Create task"
           onPress={() => {
@@ -30,22 +47,52 @@ export function TasksScreen({ navigation }: any) {
       </Panel>
       {tasks.map((task) => (
         <Panel key={task.id}>
-          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
             <View style={{ flex: 1 }}>
-              <Text style={{ color: theme.colors.text, fontWeight: "700" }}>{task.title}</Text>
+              <Text style={{ color: theme.colors.text, fontWeight: "700" }}>
+                {task.title}
+              </Text>
               <Text style={{ color: theme.colors.textMuted }}>
-                Due {new Date(task.dueOn).toLocaleDateString()} · {task.assigneeLabel}
+                Due {new Date(task.dueOn).toLocaleDateString()} ·{" "}
+                {task.assigneeLabel}
               </Text>
             </View>
             <StatusBadge
               label={task.status}
-              tone={task.status === "done" ? "success" : task.status === "doing" ? "warning" : "info"}
+              tone={
+                task.status === "done"
+                  ? "success"
+                  : task.status === "doing"
+                    ? "warning"
+                    : "info"
+              }
             />
           </View>
           <View style={{ flexDirection: "row", gap: theme.spacing.sm }}>
-            <AppButton label="Todo" variant="secondary" onPress={() => updateTaskStatus(task.id, "todo")} style={{ flex: 1 }} />
-            <AppButton label="Doing" variant="secondary" onPress={() => updateTaskStatus(task.id, "doing")} style={{ flex: 1 }} />
-            <AppButton label="Done" variant="secondary" onPress={() => updateTaskStatus(task.id, "done")} style={{ flex: 1 }} />
+            <AppButton
+              label="Todo"
+              variant="secondary"
+              onPress={() => updateTaskStatus(task.id, "todo")}
+              style={{ flex: 1 }}
+            />
+            <AppButton
+              label="Doing"
+              variant="secondary"
+              onPress={() => updateTaskStatus(task.id, "doing")}
+              style={{ flex: 1 }}
+            />
+            <AppButton
+              label="Done"
+              variant="secondary"
+              onPress={() => updateTaskStatus(task.id, "done")}
+              style={{ flex: 1 }}
+            />
           </View>
         </Panel>
       ))}
@@ -62,14 +109,29 @@ export function NotesScreen() {
 
   return (
     <Screen>
-      <SectionHeader title="Notes" subtitle="Quick capture from anywhere, with pinning for the dashboard." />
+      <SectionHeader
+        title="Notes"
+        subtitle="Quick capture from anywhere, with pinning for the dashboard."
+      />
       <Panel>
-        <AppInput value={title} onChangeText={setTitle} placeholder="Note title" />
-        <AppInput value={content} onChangeText={setContent} placeholder="What do you need to remember?" multiline />
+        <AppInput
+          value={title}
+          onChangeText={setTitle}
+          placeholder="Note title"
+        />
+        <AppInput
+          value={content}
+          onChangeText={setContent}
+          placeholder="What do you need to remember?"
+          multiline
+        />
         <AppButton
           label="Save note"
           onPress={() => {
-            addNote(title || "Quick note", content || "Captured from the notes screen.");
+            addNote(
+              title || "Quick note",
+              content || "Captured from the notes screen.",
+            );
             setTitle("");
             setContent("");
           }}
@@ -77,14 +139,31 @@ export function NotesScreen() {
       </Panel>
       {notes.map((note) => (
         <Panel key={note.id}>
-          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
             <View style={{ flex: 1 }}>
-              <Text style={{ color: theme.colors.text, fontWeight: "700" }}>{note.title}</Text>
-              <Text style={{ color: theme.colors.textMuted }}>{note.content}</Text>
+              <Text style={{ color: theme.colors.text, fontWeight: "700" }}>
+                {note.title}
+              </Text>
+              <Text style={{ color: theme.colors.textMuted }}>
+                {note.content}
+              </Text>
             </View>
-            <StatusBadge label={note.pinned ? "Pinned" : "Normal"} tone={note.pinned ? "success" : "info"} />
+            <StatusBadge
+              label={note.pinned ? "Pinned" : "Normal"}
+              tone={note.pinned ? "success" : "info"}
+            />
           </View>
-          <AppButton label={note.pinned ? "Unpin" : "Pin"} variant="secondary" onPress={() => toggleNotePin(note.id)} />
+          <AppButton
+            label={note.pinned ? "Unpin" : "Pin"}
+            variant="secondary"
+            onPress={() => toggleNotePin(note.id)}
+          />
         </Panel>
       ))}
     </Screen>

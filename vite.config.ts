@@ -5,11 +5,7 @@ import path from "path";
 import { metaImagesPlugin } from "./vite-plugin-meta-images";
 
 export default defineConfig({
-  plugins: [
-    react(),
-    tailwindcss(),
-    metaImagesPlugin(),
-  ],
+  plugins: [react(), tailwindcss(), metaImagesPlugin()],
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "client", "src"),

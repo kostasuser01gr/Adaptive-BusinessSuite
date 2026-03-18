@@ -18,7 +18,11 @@ export interface ModelAdapter {
   id: ModelProviderId;
   label: string;
   capabilityProfile: string[];
-  interpret(command: string, context: AssistantContextSnapshot, source?: 'text' | 'voice'): Promise<AssistantInterpretation>;
+  interpret(
+    command: string,
+    context: AssistantContextSnapshot,
+    source?: "text" | "voice",
+  ): Promise<AssistantInterpretation>;
 }
 
 function suggestionBase(command: string, workspaceId: string | null) {
@@ -31,7 +35,11 @@ function suggestionBase(command: string, workspaceId: string | null) {
   };
 }
 
-function createMemory(workspaceId: string | null, key: string, value: string): AssistantMemoryRecord {
+function createMemory(
+  workspaceId: string | null,
+  key: string,
+  value: string,
+): AssistantMemoryRecord {
   return {
     id: createId("memory"),
     workspaceId,
@@ -40,7 +48,10 @@ function createMemory(workspaceId: string | null, key: string, value: string): A
   };
 }
 
-function interpretDeterministically(command: string, context: AssistantContextSnapshot): AssistantInterpretation {
+function interpretDeterministically(
+  command: string,
+  context: AssistantContextSnapshot,
+): AssistantInterpretation {
   const normalized = command.trim().toLowerCase();
   const workspaceId = context.workspace.id;
 
@@ -48,7 +59,8 @@ function interpretDeterministically(command: string, context: AssistantContextSn
     const suggestion: AssistantSuggestion = {
       ...suggestionBase(command, workspaceId),
       title: "Add Damage Reports module",
-      description: "Create a dedicated module for intake damage tracking and vehicle condition follow-up.",
+      description:
+        "Create a dedicated module for intake damage tracking and vehicle condition follow-up.",
       preview: [
         "New module in workspace navigation",
         "A focused place for damage-related workflows",
@@ -56,22 +68,34 @@ function interpretDeterministically(command: string, context: AssistantContextSn
       ],
       action: {
         type: "add-module",
-        module: createModule("damage-reports", "Damage Reports", "Track condition issues and damage follow-ups.", "warning"),
+        module: createModule(
+          "damage-reports",
+          "Damage Reports",
+          "Track condition issues and damage follow-ups.",
+          "warning",
+        ),
       },
     };
 
     return {
-      reply: "I prepared a Damage Reports module proposal. Review the preview and apply it when you are ready.",
+      reply:
+        "I prepared a Damage Reports module proposal. Review the preview and apply it when you are ready.",
       suggestions: [suggestion],
-      memoryUpdates: [createMemory(workspaceId, "last_command_topic", "damage-reports")],
+      memoryUpdates: [
+        createMemory(workspaceId, "last_command_topic", "damage-reports"),
+      ],
     };
   }
 
-  if (normalized.includes("pickup location") && normalized.includes("booking")) {
+  if (
+    normalized.includes("pickup location") &&
+    normalized.includes("booking")
+  ) {
     const suggestion: AssistantSuggestion = {
       ...suggestionBase(command, workspaceId),
       title: "Add Pickup Location field",
-      description: "Attach a reusable custom field to booking records for pickup logistics.",
+      description:
+        "Attach a reusable custom field to booking records for pickup logistics.",
       preview: [
         "Bookings gain a Pickup Location custom field",
         "The field is stored in workspace configuration",
@@ -79,7 +103,12 @@ function interpretDeterministically(command: string, context: AssistantContextSn
       ],
       action: {
         type: "add-custom-field",
-        field: createCustomField("bookings", "Pickup Location", "text", "Airport, office, hotel"),
+        field: createCustomField(
+          "bookings",
+          "Pickup Location",
+          "text",
+          "Airport, office, hotel",
+        ),
       },
     };
 
@@ -89,18 +118,27 @@ function interpretDeterministically(command: string, context: AssistantContextSn
     };
   }
 
-  if ((normalized.includes("quick button") || normalized.includes("quick action")) && normalized.includes("new booking")) {
+  if (
+    (normalized.includes("quick button") ||
+      normalized.includes("quick action")) &&
+    normalized.includes("new booking")
+  ) {
     const suggestion: AssistantSuggestion = {
       ...suggestionBase(command, workspaceId),
       title: "Add quick action for New Booking",
-      description: "Place a one-tap New Booking action in the workspace quick-action rail.",
+      description:
+        "Place a one-tap New Booking action in the workspace quick-action rail.",
       preview: [
         "Quick action appears on dashboard and global quick create context",
         "Keeps booking creation within thumb reach",
       ],
       action: {
         type: "add-quick-action",
-        quickAction: createQuickAction("New Booking", "add-circle", "NewBooking"),
+        quickAction: createQuickAction(
+          "New Booking",
+          "add-circle",
+          "NewBooking",
+        ),
       },
     };
 
@@ -117,9 +155,14 @@ function interpretDeterministically(command: string, context: AssistantContextSn
     };
   }
 
-  if (normalized.includes("suggest improvements") || normalized.includes("improve") && normalized.includes("dashboard")) {
+  if (
+    normalized.includes("suggest improvements") ||
+    (normalized.includes("improve") && normalized.includes("dashboard"))
+  ) {
     const suggestions: AssistantSuggestion[] = [];
-    const hasReturnsWidget = context.workspace.dashboardWidgets.some((widget) => widget.type === "returns-today");
+    const hasReturnsWidget = context.workspace.dashboardWidgets.some(
+      (widget) => widget.type === "returns-today",
+    );
     const hasRecommendationWidget = context.workspace.dashboardWidgets.some(
       (widget) => widget.type === "assistant-recommendations",
     );
@@ -129,10 +172,17 @@ function interpretDeterministically(command: string, context: AssistantContextSn
         ...suggestionBase(command, workspaceId),
         title: "Add Returns Today widget",
         description: "Surface return pressure directly on the command center.",
-        preview: ["A dedicated return widget appears on the dashboard", "Improves end-of-day handoff visibility"],
+        preview: [
+          "A dedicated return widget appears on the dashboard",
+          "Improves end-of-day handoff visibility",
+        ],
         action: {
           type: "add-widget",
-          widget: createWidget("returns-today", "Returns Today", "Track vehicles expected back before close of day."),
+          widget: createWidget(
+            "returns-today",
+            "Returns Today",
+            "Track vehicles expected back before close of day.",
+          ),
         },
       });
     }
@@ -141,8 +191,12 @@ function interpretDeterministically(command: string, context: AssistantContextSn
       suggestions.push({
         ...suggestionBase(command, workspaceId),
         title: "Add Assistant Recommendations widget",
-        description: "Keep proactive suggestions visible even when the assistant panel is closed.",
-        preview: ["Assistant recommendations stay visible on the dashboard", "Deterministic recommendations still work without a live model"],
+        description:
+          "Keep proactive suggestions visible even when the assistant panel is closed.",
+        preview: [
+          "Assistant recommendations stay visible on the dashboard",
+          "Deterministic recommendations still work without a live model",
+        ],
         action: {
           type: "add-widget",
           widget: createWidget(
@@ -163,7 +217,8 @@ function interpretDeterministically(command: string, context: AssistantContextSn
     }
 
     return {
-      reply: "I generated dashboard improvement proposals based on what is currently missing.",
+      reply:
+        "I generated dashboard improvement proposals based on what is currently missing.",
       suggestions,
     };
   }
@@ -172,7 +227,8 @@ function interpretDeterministically(command: string, context: AssistantContextSn
     const suggestion: AssistantSuggestion = {
       ...suggestionBase(command, workspaceId),
       title: "Switch workspace to Personal mode",
-      description: "Re-shape modules, widgets, and quick actions around personal productivity.",
+      description:
+        "Re-shape modules, widgets, and quick actions around personal productivity.",
       preview: [
         "Preset changes dashboard and navigation modules",
         "Existing custom fields stay preserved",
@@ -185,7 +241,8 @@ function interpretDeterministically(command: string, context: AssistantContextSn
     };
 
     return {
-      reply: "I prepared a preset-switch proposal to move this workspace into Personal mode.",
+      reply:
+        "I prepared a preset-switch proposal to move this workspace into Personal mode.",
       suggestions: [suggestion],
     };
   }
@@ -207,19 +264,28 @@ function interpretDeterministically(command: string, context: AssistantContextSn
 export const deterministicAdapter: ModelAdapter = {
   id: "none",
   label: "No-model deterministic mode",
-  capabilityProfile: ["Command interpretation", "Config proposals", "Rule-based recommendations"],
-  interpret: async (command, context) => interpretDeterministically(command, context),
+  capabilityProfile: [
+    "Command interpretation",
+    "Config proposals",
+    "Rule-based recommendations",
+  ],
+  interpret: async (command, context) =>
+    interpretDeterministically(command, context),
 };
 
 export const remoteAdapter: ModelAdapter = {
   id: "openai",
   label: "Live AI Adapter",
-  capabilityProfile: ["Semantic reasoning", "RAG-enhanced context", "Proactive automation"],
-  interpret: async (command, context, source = 'text') => {
+  capabilityProfile: [
+    "Semantic reasoning",
+    "RAG-enhanced context",
+    "Proactive automation",
+  ],
+  interpret: async (command, context, source = "text") => {
     try {
       const response = await apiClient.chat.send(command, source);
       const suggestions: AssistantSuggestion[] = [];
-      
+
       if (response.proposedAction) {
         suggestions.push({
           id: createId("suggestion"),
@@ -232,21 +298,21 @@ export const remoteAdapter: ModelAdapter = {
           createdAt: nowIso(),
           action: {
             type: "remote-mutation",
-            raw: response.proposedAction
-          } as any
+            raw: response.proposedAction,
+          } as any,
         });
       }
 
       return {
         reply: response.assistantMessage.content,
         suggestions,
-        memoryUpdates: []
+        memoryUpdates: [],
       };
     } catch (err) {
       console.error("Remote adapter failed, falling back:", err);
       return interpretDeterministically(command, context);
     }
-  }
+  },
 };
 
 export function getModelAdapter(settings: ModelSettings): ModelAdapter {

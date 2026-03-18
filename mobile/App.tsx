@@ -21,7 +21,9 @@ function AppRoot() {
   }, [hasHydrated, initializeDemoData]);
 
   return (
-    <GestureHandlerRootView style={{ flex: 1, backgroundColor: theme.colors.background }}>
+    <GestureHandlerRootView
+      style={{ flex: 1, backgroundColor: theme.colors.background }}
+    >
       <SafeAreaProvider>
         <NavigationContainer theme={navigationTheme}>
           <StatusBar style="light" />
