@@ -9,6 +9,7 @@ export interface SyncConfig {
 export class WebSyncCoordinator {
   private lastSyncTimestamp: string = new Date(0).toISOString();
   private timer: NodeJS.Timeout | null = null;
+  private activeController: AbortController | null = null;
   private config: SyncConfig;
 
   constructor(config: SyncConfig) {
@@ -30,11 +31,23 @@ export class WebSyncCoordinator {
       clearInterval(this.timer);
       this.timer = null;
     }
+    if (this.activeController) {
+      this.activeController.abort();
+      this.activeController = null;
+    }
   }
 
   private async sync() {
+    if (this.activeController) return;
+
+    const controller = new AbortController();
+    this.activeController = controller;
+
     try {
-      const data = await api.sync.pull(this.lastSyncTimestamp);
+      const data = await api.sync.pull(
+        this.lastSyncTimestamp,
+        controller.signal,
+      );
 
       // Update local timestamp
       this.lastSyncTimestamp = data.lastSyncTimestamp;
@@ -42,6 +55,9 @@ export class WebSyncCoordinator {
       // Notify store of new data
       this.config.onSync(data);
     } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        return;
+      }
       if (err instanceof Error) {
         const message = err.message.toLowerCase();
         if (
@@ -53,6 +69,10 @@ export class WebSyncCoordinator {
         }
       }
       console.error("[WebSync] Pull failed:", err);
+    } finally {
+      if (this.activeController === controller) {
+        this.activeController = null;
+      }
     }
   }
 
