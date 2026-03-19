@@ -32,7 +32,12 @@ export default function NotesPage() {
 
   return (
     <div className="max-w-3xl mx-auto">
-      <h1 className="text-xl font-heading font-bold mb-6">Notes</h1>
+      <h1
+        className="text-xl font-heading font-bold mb-6"
+        data-testid="text-notes-title"
+      >
+        Notes
+      </h1>
 
       <form
         onSubmit={addNote}
@@ -93,6 +98,8 @@ export default function NotesPage() {
                 <button
                   onClick={() => deleteNote(n.id)}
                   className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all"
+                  aria-label={`Delete note ${n.title || n.content.slice(0, 20)}`}
+                  data-testid={`button-delete-note-${n.id}`}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>

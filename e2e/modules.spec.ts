@@ -150,6 +150,109 @@ test.describe("Module journeys", () => {
     );
   });
 
+  test("tasks flow supports create, completion toggle, and delete", async ({
+    page,
+  }) => {
+    const suffix = uniqueUsername().slice(-8);
+    const title = `Follow up ${suffix}`;
+
+    await registerAndLogin(page);
+    await page.goto("/tasks");
+    await expect(page.getByTestId("text-tasks-title")).toBeVisible();
+
+    await page.getByTestId("input-task-title").fill(title);
+    await page.getByTestId("select-task-priority").selectOption("high");
+    await Promise.all([
+      page.waitForResponse(
+        (response) =>
+          response.url().includes("/api/tasks") &&
+          response.request().method() === "POST",
+      ),
+      page.getByTestId("button-add-task").click(),
+    ]);
+
+    const task = page.locator('[data-testid^="task-item-"]').filter({
+      hasText: title,
+    });
+    await expect(task).toHaveCount(1);
+    await expect(task).toContainText("high");
+
+    await Promise.all([
+      page.waitForResponse(
+        (response) =>
+          response.url().includes("/api/tasks/") &&
+          response.request().method() === "PATCH",
+      ),
+      task.locator('[data-testid^="button-toggle-task-"]').click(),
+    ]);
+
+    await expect(page.getByText(`Completed (1)`)).toBeVisible();
+    const completedTaskRow = page.locator('[data-testid^="task-item-"]').filter({
+      hasText: title,
+    });
+    await expect(completedTaskRow).toHaveCount(1);
+    await completedTaskRow.hover();
+    await Promise.all([
+      page.waitForResponse(
+        (response) =>
+          response.url().includes("/api/tasks/") &&
+          response.request().method() === "DELETE",
+      ),
+      completedTaskRow.locator('[data-testid^="button-delete-task-"]').click(),
+    ]);
+
+    await expect(page.getByText(title, { exact: true })).toHaveCount(0);
+    const tasksAfterDelete = await page.request.get("/api/tasks");
+    expect(tasksAfterDelete.ok()).toBeTruthy();
+    await expect(tasksAfterDelete.json()).resolves.not.toContainEqual(
+      expect.objectContaining({ title }),
+    );
+  });
+
+  test("notes flow supports create and delete", async ({ page }) => {
+    const suffix = uniqueUsername().slice(-8);
+    const title = `Desk note ${suffix}`;
+    const content = `Capture note ${suffix}`;
+
+    await registerAndLogin(page);
+    await page.goto("/notes");
+    await expect(page.getByTestId("text-notes-title")).toBeVisible();
+
+    await page.getByTestId("input-note-title").fill(title);
+    await page.getByTestId("input-note-content").fill(content);
+    await Promise.all([
+      page.waitForResponse(
+        (response) =>
+          response.url().includes("/api/notes") &&
+          response.request().method() === "POST",
+      ),
+      page.getByTestId("button-save-note").click(),
+    ]);
+
+    const card = page.locator('[data-testid^="note-card-"]').filter({
+      hasText: title,
+    });
+    await expect(card).toHaveCount(1);
+    await expect(card).toContainText(content);
+
+    await card.hover();
+    await Promise.all([
+      page.waitForResponse(
+        (response) =>
+          response.url().includes("/api/notes/") &&
+          response.request().method() === "DELETE",
+      ),
+      card.locator('[data-testid^="button-delete-note-"]').click(),
+    ]);
+
+    await expect(card).toHaveCount(0);
+    const notesAfterDelete = await page.request.get("/api/notes");
+    expect(notesAfterDelete.ok()).toBeTruthy();
+    await expect(notesAfterDelete.json()).resolves.not.toContainEqual(
+      expect.objectContaining({ title, content }),
+    );
+  });
+
   test("bookings flow supports create and complete with live customer and vehicle data", async ({
     page,
   }) => {
@@ -228,5 +331,28 @@ test.describe("Module journeys", () => {
         status: "available",
       }),
     );
+  });
+
+  test("command bar and assistant surfaces support operator navigation", async ({
+    page,
+  }) => {
+    await registerAndLogin(page);
+    await page.goto("/");
+
+    await expect(page.getByTestId("text-dashboard-title")).toBeVisible();
+
+    await page.getByTestId("button-command-bar").click();
+    await expect(page.getByTestId("command-bar")).toBeVisible();
+    await page.getByTestId("input-command-bar").fill("settings");
+    await page.getByTestId("command-settings").click();
+
+    await expect(page).toHaveURL(/\/settings/);
+    await expect(page.getByTestId("text-settings-title")).toBeVisible();
+    await expect(page.getByTestId("settings-mode-rental")).toBeVisible();
+
+    await page.getByTestId("button-open-assistant").click();
+    await expect(page.getByTestId("input-chat")).toBeVisible();
+    await page.getByTestId("button-close-chat").click();
+    await expect(page.getByTestId("input-chat")).toHaveCount(0);
   });
 });

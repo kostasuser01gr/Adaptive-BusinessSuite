@@ -859,6 +859,7 @@ export async function registerRoutes(
     const t = await storage.createTask({
       ...req.body,
       userId: req.session.userId!,
+      dueDate: toDateOrNull(req.body.dueDate),
     });
     emitEvent(req.session.userId!, null, EventTypes.ENTITY_CREATED, {
       entityType: "task",
@@ -867,6 +868,92 @@ export async function registerRoutes(
     });
     return res.json(t);
   });
+  app.patch(
+    "/api/tasks/:id",
+    requireAuth,
+    async (req: Request, res: Response) => {
+      const id = getRouteParam(req, "id");
+      const task = await storage.updateTask(id, {
+        ...req.body,
+        ...(req.body.dueDate !== undefined
+          ? { dueDate: toDateOrNull(req.body.dueDate) }
+          : {}),
+      });
+
+      if (!task) {
+        return res.status(404).json({ message: "Task not found" });
+      }
+
+      emitEvent(req.session.userId!, null, EventTypes.ENTITY_UPDATED, {
+        entityType: "task",
+        entityId: id,
+        data: task,
+      });
+      return res.json(task);
+    },
+  );
+  app.delete(
+    "/api/tasks/:id",
+    requireAuth,
+    async (req: Request, res: Response) => {
+      const id = getRouteParam(req, "id");
+      await storage.deleteTask(id);
+      emitEvent(req.session.userId!, null, EventTypes.ENTITY_DELETED, {
+        entityType: "task",
+        entityId: id,
+      });
+      return res.json({ ok: true });
+    },
+  );
+
+  // ── Notes ──
+  app.get("/api/notes", requireAuth, async (req: Request, res: Response) => {
+    return res.json(await storage.getNotes(req.session.userId!));
+  });
+  app.post("/api/notes", requireAuth, async (req: Request, res: Response) => {
+    const note = await storage.createNote({
+      ...req.body,
+      userId: req.session.userId!,
+    });
+    emitEvent(req.session.userId!, null, EventTypes.ENTITY_CREATED, {
+      entityType: "note",
+      entityId: note.id,
+      data: note,
+    });
+    return res.json(note);
+  });
+  app.patch(
+    "/api/notes/:id",
+    requireAuth,
+    async (req: Request, res: Response) => {
+      const id = getRouteParam(req, "id");
+      const note = await storage.updateNote(id, req.body);
+
+      if (!note) {
+        return res.status(404).json({ message: "Note not found" });
+      }
+
+      emitEvent(req.session.userId!, null, EventTypes.ENTITY_UPDATED, {
+        entityType: "note",
+        entityId: id,
+        data: note,
+      });
+      return res.json(note);
+    },
+  );
+  app.delete(
+    "/api/notes/:id",
+    requireAuth,
+    async (req: Request, res: Response) => {
+      const id = getRouteParam(req, "id");
+      await storage.deleteNote(id);
+      emitEvent(req.session.userId!, null, EventTypes.ENTITY_DELETED, {
+        entityType: "note",
+        entityId: id,
+      });
+      return res.json({ ok: true });
+    },
+  );
 
   // ── Dashboard Stats ──
   app.get("/api/stats", requireAuth, async (req: Request, res: Response) => {
