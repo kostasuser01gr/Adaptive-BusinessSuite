@@ -1,13 +1,14 @@
 import { test, expect } from "@playwright/test";
-
-const u = () => `e2e_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+import { postWithCsrf, uniqueUsername } from "./support";
 
 // Register via API and verify the session is active before returning.
 // This ensures the browser context has a valid session cookie for page.goto().
 async function registerAndLogin(page: import("@playwright/test").Page) {
-  const username = u();
-  const res = await page.request.post("/api/auth/register", {
-    data: { username, password: "TestPass123!", displayName: "E2E" },
+  const username = uniqueUsername();
+  const res = await postWithCsrf(page.request, "/api/auth/register", {
+    username,
+    password: "TestPass123!",
+    displayName: "E2E",
   });
   expect(res.ok()).toBeTruthy();
   // Confirm the session cookie is recognised before any navigation
@@ -56,7 +57,7 @@ test.describe("Dashboard", () => {
   test("protected route /fleet redirects to /auth when not logged in", async ({
     page,
   }) => {
-    await page.request.post("/api/auth/logout");
+    await postWithCsrf(page.request, "/api/auth/logout");
     await page.goto("/fleet");
     await expect(page).toHaveURL(/\/auth/);
   });
@@ -106,8 +107,8 @@ test.describe("Dashboard", () => {
     page,
   }) => {
     await registerAndLogin(page);
-    const res = await page.request.post("/api/chat", {
-      data: { content: "add fleet" },
+    const res = await postWithCsrf(page.request, "/api/chat", {
+      content: "add fleet",
     });
     expect(res.ok()).toBeTruthy();
     const body = await res.json();
@@ -126,8 +127,8 @@ test.describe("Dashboard", () => {
 
   test("api /api/chat POST triggers dashboard clear", async ({ page }) => {
     await registerAndLogin(page);
-    const res = await page.request.post("/api/chat", {
-      data: { content: "clear dashboard" },
+    const res = await postWithCsrf(page.request, "/api/chat", {
+      content: "clear dashboard",
     });
     expect(res.ok()).toBeTruthy();
     const body = await res.json();
@@ -137,8 +138,8 @@ test.describe("Dashboard", () => {
 
   test("api /api/chat POST triggers mode switch", async ({ page }) => {
     await registerAndLogin(page);
-    const res = await page.request.post("/api/chat", {
-      data: { content: "switch to personal mode" },
+    const res = await postWithCsrf(page.request, "/api/chat", {
+      content: "switch to personal mode",
     });
     expect(res.ok()).toBeTruthy();
     const body = await res.json();
@@ -150,9 +151,7 @@ test.describe("Dashboard", () => {
     page,
   }) => {
     await registerAndLogin(page);
-    const res = await page.request.post("/api/chat", {
-      data: {},
-    });
+    const res = await postWithCsrf(page.request, "/api/chat", {});
     expect(res.status()).toBe(400);
     const body = await res.json();
     expect(body).toHaveProperty("message");
@@ -161,8 +160,8 @@ test.describe("Dashboard", () => {
   test("api /api/chat POST returns 401 when not authenticated", async ({
     request,
   }) => {
-    const res = await request.post("/api/chat", {
-      data: { content: "add fleet" },
+    const res = await postWithCsrf(request, "/api/chat", {
+      content: "add fleet",
     });
     expect(res.status()).toBe(401);
   });
@@ -178,8 +177,8 @@ test.describe("Dashboard", () => {
     page,
   }) => {
     await registerAndLogin(page);
-    const res = await page.request.post("/api/chat", {
-      data: { content: "a".repeat(4001) },
+    const res = await postWithCsrf(page.request, "/api/chat", {
+      content: "a".repeat(4001),
     });
     expect(res.status()).toBe(400);
     const body = await res.json();

@@ -2,6 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { randomBytes, scrypt, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
+import csurf from "@dr.pogodin/csurf";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
@@ -48,6 +49,7 @@ const makeLimiter = () =>
   });
 const registerLimiter = makeLimiter();
 const loginLimiter = makeLimiter();
+const csrfProtection = csurf();
 
 const scryptAsync = promisify(scrypt);
 
@@ -198,6 +200,11 @@ export async function registerRoutes(
       },
     }),
   );
+  app.use(csrfProtection);
+
+  app.get("/api/auth/csrf", (req: Request, res: Response) => {
+    return res.json({ csrfToken: req.csrfToken() });
+  });
 
   // ── Auth ──
   app.post(

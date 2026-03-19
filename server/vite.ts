@@ -1,12 +1,21 @@
 import { type Express } from "express";
+import rateLimit from "express-rate-limit";
 import { createServer as createViteServer, createLogger } from "vite";
 import { type Server } from "http";
 import viteConfig from "../vite.config";
 import fs from "fs";
 import path from "path";
 import { nanoid } from "nanoid";
+import { env } from "./config";
 
 const viteLogger = createLogger();
+const vitePageLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: env.NODE_ENV === "test" ? 10_000 : 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many page requests, please try again later." },
+});
 
 export async function setupVite(server: Server, app: Express) {
   const serverOptions = {
@@ -31,7 +40,7 @@ export async function setupVite(server: Server, app: Express) {
 
   app.use(vite.middlewares);
 
-  app.use("/{*path}", async (req, res, next) => {
+  app.use("/{*path}", vitePageLimiter, async (req, res, next) => {
     const url = req.originalUrl;
 
     try {

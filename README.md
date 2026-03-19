@@ -1,72 +1,129 @@
-# Nexus OS - ULTRA-Level Adaptive Operating System
+# Nexus OS
 
-An enterprise-grade, AI-native adaptive operating system built for high-performance operational management. Originally designed for car rental entrepreneurs, Nexus OS has evolved into a domain-agnostic resource engine capable of transforming into personal, professional, or specialized business workspaces.
+Nexus OS is an AI-assisted adaptive operations suite with a React/Vite web frontend, a Node/Express backend, PostgreSQL persistence through Drizzle ORM, and an Expo mobile client. The current production topology is:
 
-## ULTRA-Level Capabilities
+- **Backend** on Railway
+- **Frontend** on Vercel
+- **Database** on PostgreSQL
 
-### 1. Local-First Synchronization Engine
+## Core capabilities
 
-Nexus OS features a robust synchronization architecture that ensures sub-100ms responsiveness. Data is stored and mutated locally first, then synchronized in the background across Web and Mobile devices, providing true offline-first durability.
+- Adaptive workspace modes for rental, personal, professional, and custom operating models
+- Cookie-authenticated web sessions with hardened environment validation
+- AI-assisted module and action suggestions through the model gateway
+- Fleet, bookings, customers, maintenance, tasks, notes, and analytics flows
+- Web and mobile surfaces sharing the same domain model vocabulary
 
-### 2. Workspace Intelligence (RAG & RLS)
+## Stack
 
-The intelligence layer is deeply integrated into the data core:
+- **Web frontend:** React 19, Vite, TanStack Query, Wouter
+- **Backend:** Express 5, TypeScript, esbuild bundle
+- **Database:** PostgreSQL, Drizzle ORM, Drizzle Kit
+- **E2E:** Playwright
+- **Security:** npm audit, Trivy, Gitleaks, CodeQL
+- **Mobile:** Expo / React Native
 
-- **RAG (Retrieval Augmented Generation):** The AI has real-time visibility into your workspace context (fleet, bookings, tasks) ensuring precise reasoning.
-- **RLS (Row Level Security):** Enterprise-grade data isolation enforced at the Postgres layer, ensuring multi-tenant security and verifiable privacy.
+## Quick start
 
-### 3. Action-Proposal & Multi-Step Workflows
-
-The AI operates as a functional partner, not just a chatbot:
-
-- **Proposals:** AI suggests database mutations that users can preview and apply with a single tap.
-- **Workflows:** Complex multi-entity sequences (e.g., "Onboard new customer and draft contract") are handled as atomic units.
-
-### 4. Generative UI (SDUI)
-
-Server-Driven UI allows the AI to render native components directly in the interaction panel, providing specialized views like Yield Optimization charts or Vision-AI Inspection findings.
-
-### 5. Universal Transformation Layer
-
-The entire OS re-skins its vocabulary, navigation, and module packs based on the active **Ontology** (Car Rental, Personal Productivity, CRM, etc.), allowing one unified shell to serve multiple areas of life and business.
-
-## Core Modules
-
-- **Fleet Command:** Timeline-based asset management with Yield-Optimized pricing.
-- **Vision-AI Inspection:** Automated damage triage using mobile camera analysis.
-- **Executive Analytics:** Real-time RevPAR, ROI, and Profitability tracking.
-- **Intelligence Hub:** Voice-to-action mobile controls and proactive system alerts.
-
-## Technical Architecture
-
-- **Frontend:** React (Web) & React Native/Expo (Mobile) with a shared local-first sync store.
-- **Backend:** Node.js Modular Monolith deployed on Railway.
-- **Database:** PostgreSQL with Drizzle ORM and hardened RLS policies.
-- **AI Gateway:** Provider-agnostic orchestration (OpenAI, Anthropic, or Local models).
-
-## Validation & Quality
+1. Install dependencies:
 
 ```bash
-npm run check          # Structural integrity & Type safety
-npm run test           # Integration & Logic validation
-npm run audit:security # Enterprise hardening scan
+npm ci
+npm --prefix mobile ci
+```
+
+2. Configure local environment:
+
+```bash
+cp .env.example .env
+```
+
+3. Provide at minimum:
+
+- `DATABASE_URL`
+- `SESSION_SECRET`
+
+4. Push the database schema:
+
+```bash
+npx drizzle-kit push
+```
+
+5. Start the local web/backend app:
+
+```bash
+npm run dev
+```
+
+The app runs on `http://localhost:5000`.
+
+## Validation
+
+```bash
+npm run lint
+npm test
+npm run test:integration
+npm run build
+npm run test:e2e
+npm run security:audit
+npm run security:scan
+```
+
+For the full repository validation pass, including the mobile workspace:
+
+```bash
+npm run validate
 ```
 
 ## Deployment
 
-### Backend (Railway)
+### Railway backend
 
-1. Link your repo to Railway.
-2. Apply `server/services/rls_migration.sql` to your Postgres instance.
-3. Set `AI_PROVIDER=openai` and `OPENAI_API_KEY`.
+Railway uses the checked-in `railway.json` and `Dockerfile`.
 
-### Mobile (EAS)
+Required production variables:
+
+- `DATABASE_URL`
+- `SESSION_SECRET`
+- `CORS_ALLOWED_ORIGINS`
+- `AI_PROVIDER`
+- `OPENAI_API_KEY` when `AI_PROVIDER=openai`
+
+Deploy with:
 
 ```bash
-cd mobile
-eas build --profile production
+railway up --service api --environment production
 ```
+
+Health check:
+
+```bash
+curl https://<your-railway-domain>/health
+```
+
+### Vercel frontend
+
+Vercel uses the repo root with:
+
+- build command: `npm run build:web`
+- output directory: `dist/public`
+
+Required environment variable:
+
+- `VITE_API_BASE_URL=https://<your-railway-domain>`
+
+Deploy with:
+
+```bash
+vercel deploy --prod
+```
+
+## Security notes
+
+- Runtime secrets must come from environment variables.
+- Cookie-authenticated write endpoints require a CSRF token.
+- Production web deployments must align `VITE_API_BASE_URL` and `CORS_ALLOWED_ORIGINS`.
 
 ## Vision
 
-The software should adapt to the user, not force the user to adapt to the software. Nexus OS is the body, the model is the mind, and the operator is the pilot.
+The software should adapt to the operator rather than forcing the operator to adapt to the software. Nexus OS provides a unified shell, a flexible data model, and an AI layer that can assist without obscuring the underlying business state.

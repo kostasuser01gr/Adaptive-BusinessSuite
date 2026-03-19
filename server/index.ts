@@ -140,6 +140,16 @@ async function startServer() {
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
+    if (err?.code === "EBADCSRFTOKEN") {
+      if (res.headersSent) {
+        return next(err);
+      }
+
+      return res
+        .status(403)
+        .json({ message: "Invalid or missing CSRF token" });
+    }
+
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
 
