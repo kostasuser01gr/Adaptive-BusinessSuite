@@ -1,4 +1,4 @@
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "")
+const API_BASE_URL = (import.meta.env?.VITE_API_BASE_URL ?? "")
   .trim()
   .replace(/\/+$/, "");
 
@@ -23,7 +23,13 @@ export async function fetchApi(
 ): Promise<Response> {
   try {
     return await fetch(resolveApiUrl(path), init);
-  } catch {
+  } catch (error) {
+    if (
+      (error instanceof DOMException && error.name === "AbortError") ||
+      (error instanceof Error && error.name === "AbortError")
+    ) {
+      throw error;
+    }
     throw new Error(BACKEND_UNAVAILABLE_MESSAGE);
   }
 }
