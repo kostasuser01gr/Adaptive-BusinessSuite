@@ -117,9 +117,10 @@ export const api = {
       }),
   },
   sync: {
-    pull: (since?: string) =>
+    pull: (since?: string, signal?: AbortSignal) =>
       fetchAPI(
         `/api/sync${since ? `?since=${encodeURIComponent(since)}` : ""}`,
+        signal ? { signal } : undefined,
       ),
   },
   notifications: {
