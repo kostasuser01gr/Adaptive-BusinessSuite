@@ -173,7 +173,12 @@ export default function BookingsPage() {
     <div className="max-w-5xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-3">
         <div>
-          <h1 className="text-xl font-heading font-bold">Bookings</h1>
+          <h1
+            className="text-xl font-heading font-bold"
+            data-testid="text-bookings-title"
+          >
+            Bookings
+          </h1>
           <p className="text-xs text-muted-foreground mt-0.5">
             {bookings?.length || 0} total bookings
           </p>
