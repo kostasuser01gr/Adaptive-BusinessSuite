@@ -5,6 +5,8 @@ dist
 coverage
 playwright-report
 test-results
+.codex-evidence
+.vercel
 mobile/node_modules
 mobile/dist
 nexus-os

@@ -28,6 +28,7 @@
     "validate": "npm run lint && npm test && npm run build && npm run validate:mobile && npm run security:audit"
   },
   "dependencies": {
+    "@dr.pogodin/csurf": "^1.16.8",
     "@hookform/resolvers": "^3.10.0",
     "@jridgewell/trace-mapping": "^0.3.25",
     "@radix-ui/react-accordion": "^1.2.12",

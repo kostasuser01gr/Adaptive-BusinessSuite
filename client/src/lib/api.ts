@@ -1,14 +1,87 @@
 import { fetchApi } from "./http";
 
-async function fetchAPI(url: string, options?: RequestInit) {
-  const res = await fetchApi(url, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(options?.headers || {}),
-    },
+let csrfToken: string | null = null;
+let csrfTokenPromise: Promise<string> | null = null;
+
+function requiresCsrf(method?: string): boolean {
+  const normalizedMethod = (method ?? "GET").toUpperCase();
+  return !["GET", "HEAD", "OPTIONS"].includes(normalizedMethod);
+}
+
+async function requestCsrfToken(): Promise<string> {
+  const response = await fetchApi("/api/auth/csrf", {
     credentials: "include",
   });
+  if (!response.ok) {
+    throw new Error("Unable to establish a secure session.");
+  }
+
+  const payload = (await response.json().catch(() => null)) as
+    | { csrfToken?: unknown }
+    | null;
+  if (!payload?.csrfToken || typeof payload.csrfToken !== "string") {
+    throw new Error("Unable to establish a secure session.");
+  }
+
+  csrfToken = payload.csrfToken;
+  return payload.csrfToken;
+}
+
+async function ensureCsrfToken(forceRefresh = false): Promise<string> {
+  if (!forceRefresh && csrfToken) {
+    return csrfToken;
+  }
+
+  if (!csrfTokenPromise || forceRefresh) {
+    csrfTokenPromise = requestCsrfToken().finally(() => {
+      csrfTokenPromise = null;
+    });
+  }
+
+  return csrfTokenPromise;
+}
+
+async function fetchAPI(url: string, options?: RequestInit) {
+  const method = (options?.method ?? "GET").toUpperCase();
+  const headers = {
+    "Content-Type": "application/json",
+    ...(options?.headers || {}),
+  } as Record<string, string>;
+
+  if (requiresCsrf(method)) {
+    headers["x-csrf-token"] = await ensureCsrfToken();
+  }
+
+  let res = await fetchApi(url, {
+    ...options,
+    method,
+    headers,
+    credentials: "include",
+  });
+
+  if (res.status === 403 && requiresCsrf(method)) {
+    const errorPayload = await res
+      .clone()
+      .json()
+      .catch(() => ({ message: "" }));
+    const message =
+      typeof errorPayload?.message === "string" ? errorPayload.message : "";
+
+    if (message.toLowerCase().includes("csrf")) {
+      headers["x-csrf-token"] = await ensureCsrfToken(true);
+      res = await fetchApi(url, {
+        ...options,
+        method,
+        headers,
+        credentials: "include",
+      });
+    }
+  }
+
+  if (url === "/api/auth/logout" && res.ok) {
+    csrfToken = null;
+  }
+
   if (!res.ok) {
     const data = await res.json().catch(() => ({ message: "Request failed" }));
     throw new Error(data.message || `HTTP ${res.status}`);

@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
+import { postWithCsrf, uniqueUsername } from "./support";
 
 // Unique username per test run to avoid state collisions between reruns
-const u = () => `e2e_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
 const sessionCookieName = process.env.SESSION_COOKIE_NAME ?? "abs.sid";
 
 test.describe("Authentication flows", () => {
@@ -19,7 +19,7 @@ test.describe("Authentication flows", () => {
   });
 
   test("register a new user and reach dashboard", async ({ page }) => {
-    const username = u();
+    const username = uniqueUsername();
     await page.goto("/auth");
 
     // Switch to register tab
@@ -42,15 +42,17 @@ test.describe("Authentication flows", () => {
   });
 
   test("login with valid credentials", async ({ page }) => {
-    const username = u();
+    const username = uniqueUsername();
 
     // Register first via API
-    await page.request.post("/api/auth/register", {
-      data: { username, password: "TestPass123!", displayName: "E2E" },
+    await postWithCsrf(page.request, "/api/auth/register", {
+      username,
+      password: "TestPass123!",
+      displayName: "E2E",
     });
 
     // Log out any existing session
-    await page.request.post("/api/auth/logout");
+    await postWithCsrf(page.request, "/api/auth/logout");
 
     await page.goto("/auth");
     await expect(page.getByTestId("button-login-tab")).toBeVisible();
@@ -69,11 +71,13 @@ test.describe("Authentication flows", () => {
   });
 
   test("login with wrong password shows error", async ({ page }) => {
-    const username = u();
-    await page.request.post("/api/auth/register", {
-      data: { username, password: "CorrectPass1!", displayName: "E2E" },
+    const username = uniqueUsername();
+    await postWithCsrf(page.request, "/api/auth/register", {
+      username,
+      password: "CorrectPass1!",
+      displayName: "E2E",
     });
-    await page.request.post("/api/auth/logout");
+    await postWithCsrf(page.request, "/api/auth/logout");
 
     await page.goto("/auth");
     await page.getByTestId("input-username").fill(username);
@@ -85,10 +89,12 @@ test.describe("Authentication flows", () => {
   });
 
   test("logout clears session and redirects to /auth", async ({ page }) => {
-    const username = u();
+    const username = uniqueUsername();
     // Register and verify session is working before navigating
-    const regRes = await page.request.post("/api/auth/register", {
-      data: { username, password: "TestPass123!", displayName: "E2E" },
+    const regRes = await postWithCsrf(page.request, "/api/auth/register", {
+      username,
+      password: "TestPass123!",
+      displayName: "E2E",
     });
     expect(regRes.ok()).toBeTruthy();
 
@@ -103,17 +109,19 @@ test.describe("Authentication flows", () => {
     });
 
     // Logout via API and re-navigate
-    await page.request.post("/api/auth/logout");
+    await postWithCsrf(page.request, "/api/auth/logout");
     await page.goto("/");
     await expect(page).toHaveURL(/\/auth/);
   });
 
   test("duplicate username registration returns error", async ({ page }) => {
-    const username = u();
-    await page.request.post("/api/auth/register", {
-      data: { username, password: "TestPass123!", displayName: "First" },
+    const username = uniqueUsername();
+    await postWithCsrf(page.request, "/api/auth/register", {
+      username,
+      password: "TestPass123!",
+      displayName: "First",
     });
-    await page.request.post("/api/auth/logout");
+    await postWithCsrf(page.request, "/api/auth/logout");
 
     await page.goto("/auth");
     await page.getByTestId("button-register-tab").click();
@@ -126,11 +134,13 @@ test.describe("Authentication flows", () => {
   });
 
   test("session cookie has httpOnly and sameSite flags", async ({ page }) => {
-    const username = u();
+    const username = uniqueUsername();
     // Register via page.request and check that the session cookie is in the
     // browser's cookie jar with the expected security attributes.
-    const res = await page.request.post("/api/auth/register", {
-      data: { username, password: "TestPass123!", displayName: "E2E" },
+    const res = await postWithCsrf(page.request, "/api/auth/register", {
+      username,
+      password: "TestPass123!",
+      displayName: "E2E",
     });
     expect(res.ok()).toBeTruthy();
 
@@ -146,11 +156,12 @@ test.describe("Authentication flows", () => {
   test("auth rate limiter returns 429 after threshold", async ({ request }) => {
     // Fire 21 login attempts with a non-existent user from a fresh isolated
     // request context (separate IP-key bucket from page tests).
-    const bogus = u();
+    const bogus = uniqueUsername();
     let lastStatus = 0;
     for (let i = 0; i < 21; i++) {
-      const r = await request.post("/api/auth/login", {
-        data: { username: bogus, password: "WrongPass1!" },
+      const r = await postWithCsrf(request, "/api/auth/login", {
+        username: bogus,
+        password: "WrongPass1!",
       });
       lastStatus = r.status();
     }

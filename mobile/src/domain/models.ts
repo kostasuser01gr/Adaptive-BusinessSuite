@@ -71,6 +71,8 @@ export interface SessionState {
   activeWorkspaceId: string | null;
 }
 
+import * as Crypto from "expo-crypto";
+
 export interface ModuleDefinition {
   id: string;
   key: ModuleKey;
@@ -291,7 +293,7 @@ export const workspaceModeLabels: Record<WorkspaceMode, string> = {
 };
 
 export function createId(prefix: string): string {
-  return `${prefix}-${Math.random().toString(36).slice(2, 10)}-${Date.now().toString(36)}`;
+  return `${prefix}-${Crypto.randomUUID()}`;
 }
 
 export function nowIso() {
