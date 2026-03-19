@@ -118,7 +118,12 @@ export default function CustomersPage() {
     <div className="max-w-5xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-3">
         <div>
-          <h1 className="text-xl font-heading font-bold">Customers</h1>
+          <h1
+            className="text-xl font-heading font-bold"
+            data-testid="text-customers-title"
+          >
+            Customers
+          </h1>
           <p className="text-xs text-muted-foreground mt-0.5">
             {customers?.length || 0} contacts
           </p>
@@ -144,6 +149,7 @@ export default function CustomersPage() {
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search customers..."
           className="w-full bg-card/40 border border-white/[0.06] rounded-lg py-2 pl-9 pr-3 text-xs focus:outline-none focus:ring-1 focus:ring-primary/30"
+          data-testid="input-search-customers"
         />
       </div>
 
@@ -178,6 +184,8 @@ export default function CustomersPage() {
                     variant="ghost"
                     size="icon"
                     className="h-7 w-7 opacity-0 group-hover:opacity-100"
+                    aria-label={`Customer actions for ${c.name}`}
+                    data-testid={`button-customer-menu-${c.id}`}
                   >
                     <MoreVertical className="h-3.5 w-3.5" />
                   </Button>

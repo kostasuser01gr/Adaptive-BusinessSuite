@@ -767,6 +767,19 @@ export async function registerRoutes(
       return res.json(c);
     },
   );
+  app.delete(
+    "/api/customers/:id",
+    requireAuth,
+    async (req: Request, res: Response) => {
+      const id = getRouteParam(req, "id");
+      await storage.deleteCustomer(id);
+      emitEvent(req.session.userId!, null, EventTypes.ENTITY_DELETED, {
+        entityType: "customer",
+        entityId: id,
+      });
+      return res.json({ ok: true });
+    },
+  );
 
   // ── Bookings ──
   app.get("/api/bookings", requireAuth, async (req: Request, res: Response) => {
@@ -791,6 +804,50 @@ export async function registerRoutes(
         data: b,
       });
       return res.json(b);
+    },
+  );
+  app.patch(
+    "/api/bookings/:id",
+    requireAuth,
+    async (req: Request, res: Response) => {
+      const id = getRouteParam(req, "id");
+      const existing = await storage.getBooking(id);
+      if (!existing) {
+        return res.status(404).json({ message: "Booking not found" });
+      }
+
+      const updates = {
+        ...req.body,
+        ...(req.body.startDate !== undefined
+          ? { startDate: toDateOrNull(req.body.startDate) }
+          : {}),
+        ...(req.body.endDate !== undefined
+          ? { endDate: toDateOrNull(req.body.endDate) }
+          : {}),
+      };
+
+      const booking = await storage.updateBooking(id, updates);
+      const bookingVehicleId = booking?.vehicleId ?? existing.vehicleId;
+      const bookingStatus = booking?.status ?? existing.status;
+
+      if (bookingVehicleId) {
+        if (bookingStatus === "completed" || bookingStatus === "cancelled") {
+          await storage.updateVehicle(bookingVehicleId, {
+            status: "available",
+          });
+        } else if (bookingStatus === "active") {
+          await storage.updateVehicle(bookingVehicleId, {
+            status: "rented",
+          });
+        }
+      }
+
+      emitEvent(req.session.userId!, null, EventTypes.ENTITY_UPDATED, {
+        entityType: "booking",
+        entityId: id,
+        data: booking,
+      });
+      return res.json(booking);
     },
   );
 
