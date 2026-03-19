@@ -4,7 +4,7 @@ import { randomBytes, scrypt, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
-import rateLimit from "express-rate-limit";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import { storage } from "./storage";
 import { pool } from "./db";
 import {
@@ -26,12 +26,24 @@ import { calculateYield } from "./services/yield";
 import { processInspection } from "./services/vision";
 import { env } from "./config";
 
+function getAuthBucketKey(req: Request): string {
+  const ipKey = ipKeyGenerator(req.ip ?? req.socket.remoteAddress ?? "");
+  const username =
+    typeof req.body?.username === "string"
+      ? req.body.username.trim().toLowerCase()
+      : "";
+
+  return username ? `${ipKey}:${username}` : ipKey;
+}
+
 const makeLimiter = () =>
   rateLimit({
     windowMs: 15 * 60 * 1000,
     max: env.NODE_ENV === "test" ? 10000 : 20,
     standardHeaders: true,
     legacyHeaders: false,
+    skipSuccessfulRequests: true,
+    keyGenerator: getAuthBucketKey,
     message: { message: "Too many requests, please try again later." },
   });
 const registerLimiter = makeLimiter();
