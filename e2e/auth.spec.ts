@@ -88,7 +88,9 @@ test.describe("Authentication flows", () => {
     await expect(page).toHaveURL(/\/auth/);
   });
 
-  test("logout clears session and redirects to /auth", async ({ page }) => {
+  test("logout button clears session and redirects to /auth", async ({
+    page,
+  }) => {
     const username = uniqueUsername();
     // Register and verify session is working before navigating
     const regRes = await postWithCsrf(page.request, "/api/auth/register", {
@@ -108,10 +110,12 @@ test.describe("Authentication flows", () => {
       timeout: 10000,
     });
 
-    // Logout via API and re-navigate
-    await postWithCsrf(page.request, "/api/auth/logout");
-    await page.goto("/");
+    await page.getByTestId("button-logout").click();
     await expect(page).toHaveURL(/\/auth/);
+    await expect(page.getByTestId("input-username")).toBeVisible();
+
+    const meResAfter = await page.request.get("/api/auth/me");
+    expect(meResAfter.status()).toBe(401);
   });
 
   test("duplicate username registration returns error", async ({ page }) => {

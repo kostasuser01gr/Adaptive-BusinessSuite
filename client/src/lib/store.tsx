@@ -184,8 +184,12 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   };
   const logout = async () => {
     await api.auth.logout();
-    qc.clear();
-    qc.invalidateQueries({ queryKey: ["/api/auth/me"] });
+    await qc.cancelQueries();
+    qc.setQueryData(["/api/auth/me"], null);
+    qc.removeQueries({
+      predicate: (query) => query.queryKey[0] !== "/api/auth/me",
+    });
+    toast.success("Signed out");
   };
 
   const setMode = async (m: UserMode) => {

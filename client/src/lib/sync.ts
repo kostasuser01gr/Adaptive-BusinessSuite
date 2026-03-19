@@ -42,6 +42,16 @@ export class WebSyncCoordinator {
       // Notify store of new data
       this.config.onSync(data);
     } catch (err) {
+      if (err instanceof Error) {
+        const message = err.message.toLowerCase();
+        if (
+          message.includes("not authenticated") ||
+          message.startsWith("401:")
+        ) {
+          this.stop();
+          return;
+        }
+      }
       console.error("[WebSync] Pull failed:", err);
     }
   }
