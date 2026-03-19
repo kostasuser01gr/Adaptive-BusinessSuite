@@ -115,7 +115,8 @@ test.describe("Authentication flows", () => {
     await expect(page.getByTestId("input-username")).toBeVisible();
 
     const meResAfter = await page.request.get("/api/auth/me");
-    expect(meResAfter.status()).toBe(401);
+    expect(meResAfter.ok()).toBeTruthy();
+    await expect(meResAfter.json()).resolves.toBeNull();
   });
 
   test("duplicate username registration returns error", async ({ page }) => {

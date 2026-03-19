@@ -62,12 +62,12 @@ test.describe("Dashboard", () => {
     await expect(page).toHaveURL(/\/auth/);
   });
 
-  test("api /api/auth/me returns 401 when not authenticated", async ({
+  test("api /api/auth/me returns null when not authenticated", async ({
     request,
   }) => {
-    // Use a fresh context without session
     const res = await request.get("/api/auth/me");
-    expect(res.status()).toBe(401);
+    expect(res.ok()).toBeTruthy();
+    await expect(res.json()).resolves.toBeNull();
   });
 
   test("api /api/stats returns stats for authenticated user", async ({
