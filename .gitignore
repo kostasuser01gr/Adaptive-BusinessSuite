@@ -9,6 +9,8 @@ coverage
 playwright-report/
 test-results/
 .vercel/
+.agents/
+skills-lock.json
 *.log
 .git.embedded-backup
 nexus-os/

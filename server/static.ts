@@ -1,5 +1,5 @@
-import express, { type Express } from "express";
-import rateLimit from "express-rate-limit";
+import express, { type Express, type Request } from "express";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import fs from "fs";
 import path from "path";
 import { env } from "./config";
@@ -9,6 +9,8 @@ const spaFallbackLimiter = rateLimit({
   max: env.NODE_ENV === "test" ? 10_000 : 300,
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: (req: Request) =>
+    ipKeyGenerator(req.ip ?? req.socket.remoteAddress ?? "127.0.0.1"),
   message: { message: "Too many page requests, please try again later." },
 });
 

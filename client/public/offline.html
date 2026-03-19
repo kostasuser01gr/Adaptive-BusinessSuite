@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+    <meta name="theme-color" content="#090b1c" />
+    <title>Nexus OS Offline</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #090b1c;
+        --panel: rgba(255, 255, 255, 0.06);
+        --border: rgba(255, 255, 255, 0.1);
+        --text: #f5f7ff;
+        --muted: #9ca3c9;
+        --accent: #8b5cf6;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background:
+          radial-gradient(circle at top, rgba(139, 92, 246, 0.2), transparent 35%),
+          linear-gradient(180deg, #090b1c 0%, #0b1026 100%);
+        color: var(--text);
+        font-family: "Inter", system-ui, sans-serif;
+        padding: 24px;
+      }
+
+      .card {
+        width: min(100%, 420px);
+        border: 1px solid var(--border);
+        background: var(--panel);
+        backdrop-filter: blur(18px);
+        border-radius: 24px;
+        padding: 28px;
+        box-shadow: 0 25px 80px rgba(5, 8, 20, 0.5);
+      }
+
+      .eyebrow {
+        font-size: 11px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: 14px;
+      }
+
+      h1 {
+        margin: 0 0 12px;
+        font-family: "Plus Jakarta Sans", "Inter", sans-serif;
+        font-size: 30px;
+        line-height: 1.05;
+      }
+
+      p {
+        margin: 0 0 18px;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+
+      ul {
+        margin: 0 0 22px;
+        padding-left: 18px;
+        color: var(--muted);
+        line-height: 1.7;
+      }
+
+      a {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        border-radius: 999px;
+        border: 1px solid rgba(139, 92, 246, 0.4);
+        background: rgba(139, 92, 246, 0.14);
+        color: var(--text);
+        text-decoration: none;
+        padding: 10px 14px;
+        font-weight: 600;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <div class="eyebrow">Offline Mode</div>
+      <h1>Nexus OS is still available.</h1>
+      <p>
+        The shell loaded successfully, but the live backend is unavailable right now.
+        Cached pages, recent workspace context, and local-safe flows can continue while
+        the connection comes back.
+      </p>
+      <ul>
+        <li>Check queued actions before resuming critical work.</li>
+        <li>Open tasks and notes for low-risk local work.</li>
+        <li>Reconnect to sync bookings, customers, and live operational changes.</li>
+      </ul>
+      <a href="/">Return to Nexus OS</a>
+    </main>
+  </body>
+</html>

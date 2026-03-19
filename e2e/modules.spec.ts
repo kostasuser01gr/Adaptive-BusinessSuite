@@ -3,13 +3,27 @@ import { postWithCsrf, uniqueUsername } from "./support";
 
 async function registerAndLogin(page: import("@playwright/test").Page) {
   const username = uniqueUsername();
-  const response = await postWithCsrf(page.request, "/api/auth/register", {
-    username,
-    password: "TestPass123!",
-    displayName: "Module E2E",
-  });
+  await page.goto("/auth", { waitUntil: "domcontentloaded" });
+  await page.getByTestId("button-register-tab").click();
+  await page.getByTestId("input-display-name").fill("Module E2E");
+  await page.getByTestId("input-username").fill(username);
+  await page.getByTestId("input-password").fill("TestPass123!");
 
-  expect(response.ok()).toBeTruthy();
+  const [registerResponse] = await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        response.url().includes("/api/auth/register") &&
+        response.request().method() === "POST" &&
+        response.status() === 200,
+    ),
+    page.getByTestId("button-auth-submit").click(),
+  ]);
+
+  expect(registerResponse.ok()).toBeTruthy();
+  await expect(page).toHaveURL("/", { timeout: 10000 });
+  await expect(page.getByTestId("text-dashboard-title")).toBeVisible({
+    timeout: 10000,
+  });
   return username;
 }
 
@@ -18,7 +32,6 @@ test.describe("Module journeys", () => {
     page,
   }) => {
     await registerAndLogin(page);
-    await page.goto("/");
 
     await expect(page.getByTestId("text-dashboard-title")).toBeVisible({
       timeout: 10000,
@@ -43,7 +56,7 @@ test.describe("Module journeys", () => {
     const plate = `E2E-${uniqueUsername().slice(-6).toUpperCase()}`;
 
     await registerAndLogin(page);
-    await page.goto("/fleet");
+    await page.goto("/fleet", { waitUntil: "domcontentloaded" });
     await expect(page.getByTestId("text-fleet-title")).toBeVisible();
 
     await page.getByTestId("button-add-vehicle").click();
@@ -108,8 +121,11 @@ test.describe("Module journeys", () => {
     const phone = `555${suffix.slice(0, 4)}`;
 
     await registerAndLogin(page);
-    await page.goto("/customers");
-    await expect(page.getByTestId("text-customers-title")).toBeVisible();
+    await page.goto("/customers", { waitUntil: "domcontentloaded" });
+    await expect(page).toHaveURL(/\/customers/);
+    await expect(page.getByTestId("text-customers-title")).toBeVisible({
+      timeout: 10000,
+    });
 
     await page.getByTestId("button-add-customer").click();
     await page.getByTestId("input-customer-name").fill(name);
@@ -157,7 +173,7 @@ test.describe("Module journeys", () => {
     const title = `Follow up ${suffix}`;
 
     await registerAndLogin(page);
-    await page.goto("/tasks");
+    await page.goto("/tasks", { waitUntil: "domcontentloaded" });
     await expect(page.getByTestId("text-tasks-title")).toBeVisible();
 
     await page.getByTestId("input-task-title").fill(title);
@@ -215,7 +231,7 @@ test.describe("Module journeys", () => {
     const content = `Capture note ${suffix}`;
 
     await registerAndLogin(page);
-    await page.goto("/notes");
+    await page.goto("/notes", { waitUntil: "domcontentloaded" });
     await expect(page.getByTestId("text-notes-title")).toBeVisible();
 
     await page.getByTestId("input-note-title").fill(title);
@@ -283,8 +299,11 @@ test.describe("Module journeys", () => {
     expect(customerCreate.ok()).toBeTruthy();
     const customer = await customerCreate.json();
 
-    await page.goto("/bookings");
-    await expect(page.getByTestId("text-bookings-title")).toBeVisible();
+    await page.goto("/bookings", { waitUntil: "domcontentloaded" });
+    await expect(page).toHaveURL(/\/bookings/);
+    await expect(page.getByTestId("text-bookings-title")).toBeVisible({
+      timeout: 10000,
+    });
 
     await page.getByTestId("button-add-booking").click();
     await page.getByTestId("select-booking-vehicle").selectOption(vehicle.id);
@@ -337,7 +356,7 @@ test.describe("Module journeys", () => {
     page,
   }) => {
     await registerAndLogin(page);
-    await page.goto("/");
+    await page.goto("/", { waitUntil: "domcontentloaded" });
 
     await expect(page.getByTestId("text-dashboard-title")).toBeVisible();
 

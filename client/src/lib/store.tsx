@@ -44,8 +44,11 @@ interface AppContextType {
   chatHistory: Message[];
   stats: any;
   suggestions: any[];
+  notifications: any[];
+  unreadNotificationsCount: number;
   isChatOpen: boolean;
   isCommandBarOpen: boolean;
+  isNotificationsOpen: boolean;
   currentProposal: any | null;
   currentWorkflow: any[] | null;
   currentGenerativeUI: any | null;
@@ -60,6 +63,9 @@ interface AppContextType {
   removeModule: (id: string) => Promise<void>;
   toggleChat: () => void;
   setCommandBarOpen: (open: boolean) => void;
+  setNotificationsOpen: (open: boolean) => void;
+  markNotificationRead: (id: string) => Promise<void>;
+  markAllNotificationsRead: () => Promise<void>;
   processCommand: (command: string) => Promise<void>;
   applyProposal: () => Promise<void>;
   applyWorkflow: () => Promise<void>;
@@ -72,6 +78,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export function AppStateProvider({ children }: { children: React.ReactNode }) {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isCommandBarOpen, setCommandBarOpen] = useState(false);
+  const [isNotificationsOpen, setNotificationsOpen] = useState(false);
   const [currentProposal, setCurrentProposal] = useState<any | null>(null);
   const [currentWorkflow, setCurrentWorkflow] = useState<any[] | null>(null);
   const [currentGenerativeUI, setCurrentGenerativeUI] = useState<any | null>(
@@ -135,12 +142,23 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   });
   const suggestions = suggestionsData || [];
 
+  const { data: notificationsData } = useQuery({
+    queryKey: ["/api/notifications"],
+    queryFn: api.notifications.list,
+    enabled: isAuthenticated,
+  });
+  const notifications = notificationsData || [];
+  const unreadNotificationsCount = notifications.filter(
+    (notification: any) => !notification.read,
+  ).length;
+
   const refetchAll = () => {
     qc.invalidateQueries({ queryKey: ["/api/modules"] });
     qc.invalidateQueries({ queryKey: ["/api/chat"] });
     qc.invalidateQueries({ queryKey: ["/api/auth/me"] });
     qc.invalidateQueries({ queryKey: ["/api/stats"] });
     qc.invalidateQueries({ queryKey: ["/api/suggestions"] });
+    qc.invalidateQueries({ queryKey: ["/api/notifications"] });
   };
 
   // --- Background Sync Integration ---
@@ -221,6 +239,38 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
 
   const toggleChat = () => setIsChatOpen((o) => !o);
 
+  const markNotificationRead = async (id: string) => {
+    const previous = qc.getQueryData(["/api/notifications"]);
+    qc.setQueryData(["/api/notifications"], (old: any[] = []) =>
+      old.map((notification) =>
+        notification.id === id ? { ...notification, read: true } : notification,
+      ),
+    );
+
+    try {
+      await api.notifications.read(id);
+      await qc.invalidateQueries({ queryKey: ["/api/notifications"] });
+    } catch (e) {
+      qc.setQueryData(["/api/notifications"], previous);
+      toast.error("Failed to update notification");
+    }
+  };
+
+  const markAllNotificationsRead = async () => {
+    const previous = qc.getQueryData(["/api/notifications"]);
+    qc.setQueryData(["/api/notifications"], (old: any[] = []) =>
+      old.map((notification) => ({ ...notification, read: true })),
+    );
+
+    try {
+      await api.notifications.readAll();
+      await qc.invalidateQueries({ queryKey: ["/api/notifications"] });
+    } catch (e) {
+      qc.setQueryData(["/api/notifications"], previous);
+      toast.error("Failed to update notifications");
+    }
+  };
+
   const processCommand = async (command: string) => {
     const result = await api.chat.send(command);
     if (result.proposedAction) {
@@ -291,8 +341,11 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
         chatHistory,
         stats,
         suggestions,
+        notifications,
+        unreadNotificationsCount,
         isChatOpen,
         isCommandBarOpen,
+        isNotificationsOpen,
         currentProposal,
         currentWorkflow,
         currentGenerativeUI,
@@ -303,6 +356,9 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
         removeModule,
         toggleChat,
         setCommandBarOpen,
+        setNotificationsOpen,
+        markNotificationRead,
+        markAllNotificationsRead,
         processCommand,
         applyProposal,
         applyWorkflow,
