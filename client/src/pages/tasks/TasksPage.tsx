@@ -16,22 +16,53 @@ export default function TasksPage() {
   const addTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim()) return;
-    await api.tasks.create({ title: newTitle, status: "todo", priority });
+    const createdTask = await api.tasks.create({
+      title: newTitle,
+      status: "todo",
+      priority,
+    });
+    qc.setQueryData(["/api/tasks"], (current: any[] = []) => [
+      createdTask,
+      ...current,
+    ]);
     setNewTitle("");
-    qc.invalidateQueries({ queryKey: ["/api/tasks"] });
-    qc.invalidateQueries({ queryKey: ["/api/stats"] });
+    await qc.invalidateQueries({ queryKey: ["/api/tasks"] });
+    await qc.invalidateQueries({ queryKey: ["/api/stats"] });
   };
 
   const toggleTask = async (id: string, status: string) => {
-    await api.tasks.update(id, { status: status === "done" ? "todo" : "done" });
-    qc.invalidateQueries({ queryKey: ["/api/tasks"] });
-    qc.invalidateQueries({ queryKey: ["/api/stats"] });
+    const previousTasks = qc.getQueryData(["/api/tasks"]);
+    const nextStatus = status === "done" ? "todo" : "done";
+    qc.setQueryData(["/api/tasks"], (current: any[] = []) =>
+      current.map((task) =>
+        task.id === id ? { ...task, status: nextStatus } : task,
+      ),
+    );
+
+    try {
+      await api.tasks.update(id, { status: nextStatus });
+      await qc.invalidateQueries({ queryKey: ["/api/tasks"] });
+      await qc.invalidateQueries({ queryKey: ["/api/stats"] });
+    } catch (error) {
+      qc.setQueryData(["/api/tasks"], previousTasks);
+      throw error;
+    }
   };
 
   const deleteTask = async (id: string) => {
-    await api.tasks.remove(id);
-    qc.invalidateQueries({ queryKey: ["/api/tasks"] });
-    qc.invalidateQueries({ queryKey: ["/api/stats"] });
+    const previousTasks = qc.getQueryData(["/api/tasks"]);
+    qc.setQueryData(["/api/tasks"], (current: any[] = []) =>
+      current.filter((task) => task.id !== id),
+    );
+
+    try {
+      await api.tasks.remove(id);
+      await qc.invalidateQueries({ queryKey: ["/api/tasks"] });
+      await qc.invalidateQueries({ queryKey: ["/api/stats"] });
+    } catch (error) {
+      qc.setQueryData(["/api/tasks"], previousTasks);
+      throw error;
+    }
   };
 
   const todoTasks = (tasks || []).filter((t: any) => t.status !== "done");

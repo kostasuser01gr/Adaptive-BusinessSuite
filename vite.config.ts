@@ -33,6 +33,7 @@ export default defineConfig({
           ) {
             return "charts-vendor";
           }
+          return "app-vendor";
         },
       },
     },

@@ -26,8 +26,18 @@ export default function NotesPage() {
   };
 
   const deleteNote = async (id: string) => {
-    await api.notes.remove(id);
-    qc.invalidateQueries({ queryKey: ["/api/notes"] });
+    const previousNotes = qc.getQueryData(["/api/notes"]);
+    qc.setQueryData(["/api/notes"], (current: any[] = []) =>
+      current.filter((note) => note.id !== id),
+    );
+
+    try {
+      await api.notes.remove(id);
+      await qc.invalidateQueries({ queryKey: ["/api/notes"] });
+    } catch (error) {
+      qc.setQueryData(["/api/notes"], previousNotes);
+      throw error;
+    }
   };
 
   return (

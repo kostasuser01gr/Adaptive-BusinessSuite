@@ -1,6 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
 
 const isCI = Boolean(process.env.CI);
+const useProductionServer =
+  isCI || process.env.PLAYWRIGHT_USE_PROD_SERVER === "1";
 
 const sessionSecret =
   process.env.SESSION_SECRET ??
@@ -25,9 +27,9 @@ export default defineConfig({
         { name: "webkit", use: { ...devices["Desktop Safari"] } },
       ],
   webServer: {
-    command: isCI ? "npm run start:e2e" : "npm run dev",
+    command: useProductionServer ? "npm run start:e2e" : "npm run dev",
     port: 5000,
-    reuseExistingServer: !isCI,
+    reuseExistingServer: !useProductionServer,
     timeout: 120 * 1000,
     env: {
       PORT: "5000",

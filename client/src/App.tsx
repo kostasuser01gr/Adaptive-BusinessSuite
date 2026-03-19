@@ -1,5 +1,5 @@
-import { Suspense, lazy } from "react";
-import { Switch, Route, Redirect } from "wouter";
+import { useEffect } from "react";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -7,19 +7,18 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppStateProvider, useAppState } from "./lib/store";
 
 import AppLayout from "./components/layout/AppLayout";
-
-const AuthPage = lazy(() => import("./pages/auth/AuthPage"));
-const DashboardPage = lazy(() => import("./pages/dashboard/DashboardPage"));
-const FleetPage = lazy(() => import("./pages/fleet/FleetPage"));
-const BookingsPage = lazy(() => import("./pages/bookings/BookingsPage"));
-const CustomersPage = lazy(() => import("./pages/customers/CustomersPage"));
-const TasksPage = lazy(() => import("./pages/tasks/TasksPage"));
-const NotesPage = lazy(() => import("./pages/notes/NotesPage"));
-const MaintenancePage = lazy(() => import("./pages/maintenance/MaintenancePage"));
-const SettingsPage = lazy(() => import("./pages/settings/SettingsPage"));
-const FinancialPage = lazy(() => import("./pages/financial/FinancialPage"));
-const NexusUltraPage = lazy(() => import("./pages/nexus/NexusUltraPage"));
-const NotFound = lazy(() => import("@/pages/not-found"));
+import AuthPage from "./pages/auth/AuthPage";
+import DashboardPage from "./pages/dashboard/DashboardPage";
+import FleetPage from "./pages/fleet/FleetPage";
+import BookingsPage from "./pages/bookings/BookingsPage";
+import CustomersPage from "./pages/customers/CustomersPage";
+import TasksPage from "./pages/tasks/TasksPage";
+import NotesPage from "./pages/notes/NotesPage";
+import MaintenancePage from "./pages/maintenance/MaintenancePage";
+import SettingsPage from "./pages/settings/SettingsPage";
+import FinancialPage from "./pages/financial/FinancialPage";
+import NexusUltraPage from "./pages/nexus/NexusUltraPage";
+import NotFound from "@/pages/not-found";
 
 function ProtectedRoute({
   component: Component,
@@ -27,23 +26,25 @@ function ProtectedRoute({
   component: React.ComponentType;
   path?: string;
 }) {
+  const [, setLocation] = useLocation();
   const { isAuthenticated, isLoading } = useAppState();
+
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      setLocation("/auth");
+    }
+  }, [isAuthenticated, isLoading, setLocation]);
+
   if (isLoading) return null;
-  if (!isAuthenticated) return <Redirect to="/auth" />;
-  return (
-    <Suspense fallback={null}>
-      <Component />
-    </Suspense>
-  );
+  if (!isAuthenticated) return null;
+  return <Component />;
 }
 
 function Router() {
   return (
     <Switch>
       <Route path="/auth">
-        <Suspense fallback={null}>
-          <AuthPage />
-        </Suspense>
+        <AuthPage />
       </Route>
       <Route path="/">
         <ProtectedRoute component={DashboardPage} />
@@ -76,9 +77,7 @@ function Router() {
         <ProtectedRoute component={NexusUltraPage} />
       </Route>
       <Route>
-        <Suspense fallback={null}>
-          <NotFound />
-        </Suspense>
+        <NotFound />
       </Route>
     </Switch>
   );

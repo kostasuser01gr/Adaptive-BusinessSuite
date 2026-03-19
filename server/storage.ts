@@ -485,13 +485,13 @@ export class DatabaseStorage implements IStorage {
   async markNotificationRead(id: string) {
     await db
       .update(notifications)
-      .set({ read: true })
+      .set({ read: true, updatedAt: new Date() })
       .where(eq(notifications.id, id));
   }
   async markAllNotificationsRead(userId: string) {
     await db
       .update(notifications)
-      .set({ read: true })
+      .set({ read: true, updatedAt: new Date() })
       .where(eq(notifications.userId, userId));
   }
 

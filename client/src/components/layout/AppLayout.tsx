@@ -4,12 +4,25 @@ import Sidebar from "./Sidebar";
 import AssistantChat from "./AssistantChat";
 import CommandBar from "./CommandBar";
 import MobileNav from "./MobileNav";
+import NotificationsSheet from "./NotificationsSheet";
+import InstallAppButton from "./InstallAppButton";
 import { Search, Bell, Loader2, Command } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading, user, isChatOpen, setCommandBarOpen } =
-    useAppState();
+  const {
+    isAuthenticated,
+    isLoading,
+    user,
+    isChatOpen,
+    isNotificationsOpen,
+    notifications,
+    unreadNotificationsCount,
+    setCommandBarOpen,
+    setNotificationsOpen,
+    markNotificationRead,
+    markAllNotificationsRead,
+  } = useAppState();
 
   if (isLoading) {
     return (
@@ -27,6 +40,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-[100dvh] overflow-hidden bg-background">
       <CommandBar />
+      <NotificationsSheet
+        notifications={notifications}
+        open={isNotificationsOpen}
+        unreadCount={unreadNotificationsCount}
+        onOpenChange={setNotificationsOpen}
+        onMarkRead={markNotificationRead}
+        onMarkAllRead={markAllNotificationsRead}
+      />
       <Sidebar />
 
       <div className="flex-1 flex flex-col min-w-0">
@@ -48,14 +69,25 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="flex items-center gap-2">
+            <InstallAppButton />
             <Button
               variant="ghost"
               size="icon"
               className="relative h-8 w-8"
+              onClick={() => setNotificationsOpen(true)}
               data-testid="button-notifications"
             >
               <Bell className="h-4 w-4" />
-              <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-primary rounded-full" />
+              {unreadNotificationsCount > 0 ? (
+                <span
+                  className="absolute -right-1 -top-1 min-w-4 rounded-full bg-primary px-1 text-[10px] font-semibold leading-4 text-primary-foreground"
+                  data-testid="badge-notification-count"
+                >
+                  {unreadNotificationsCount > 9
+                    ? "9+"
+                    : unreadNotificationsCount}
+                </span>
+              ) : null}
             </Button>
             <div
               className="h-7 w-7 rounded-full bg-primary/20 border border-primary/40 flex items-center justify-center text-primary text-xs font-semibold cursor-pointer"
