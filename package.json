@@ -25,7 +25,7 @@
     "security:scan": "trivy fs --scanners vuln,misconfig --severity HIGH,CRITICAL --ignore-unfixed --skip-dirs node_modules --skip-dirs dist --skip-dirs mobile/node_modules --skip-dirs mobile/dist --skip-dirs nexus-os . && gitleaks git --redact",
     "test:integration": "NODE_ENV=test npx tsx --test test/storage.integration.test.ts",
     "test:e2e": "playwright test",
-    "validate": "npm run lint && npm test && npm run build && npm run validate:mobile && npm run security:audit"
+    "validate": "npm run lint && npm test && npm run test:integration && npm run build && npm run validate:mobile && npm run security:audit"
   },
   "dependencies": {
     "@dr.pogodin/csurf": "^1.16.8",
