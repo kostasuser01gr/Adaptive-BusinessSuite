@@ -21,6 +21,7 @@ export const ontologies: Record<string, Ontology> = {
     resourceName: "Vehicle",
     eventName: "Booking",
     navigation: [
+      { icon: "Sparkles", label: "Today", path: "/today", always: true },
       { icon: "LayoutDashboard", label: "Dashboard", path: "/", always: true },
       { icon: "CarFront", label: "Fleet", path: "/fleet" },
       { icon: "Calendar", label: "Bookings", path: "/bookings" },
@@ -44,6 +45,7 @@ export const ontologies: Record<string, Ontology> = {
     resourceName: "Asset",
     eventName: "Event",
     navigation: [
+      { icon: "Sparkles", label: "Today", path: "/today", always: true },
       { icon: "LayoutDashboard", label: "Overview", path: "/", always: true },
       {
         icon: "CheckSquare",
@@ -69,6 +71,7 @@ export const ontologies: Record<string, Ontology> = {
     resourceName: "Project",
     eventName: "Task",
     navigation: [
+      { icon: "Sparkles", label: "Today", path: "/today", always: true },
       { icon: "LayoutDashboard", label: "Dashboard", path: "/", always: true },
       { icon: "Briefcase", label: "Projects", path: "/projects" },
       { icon: "Users", label: "CRM", path: "/customers" },

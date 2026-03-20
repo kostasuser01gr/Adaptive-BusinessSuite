@@ -18,6 +18,7 @@ import MaintenancePage from "./pages/maintenance/MaintenancePage";
 import SettingsPage from "./pages/settings/SettingsPage";
 import FinancialPage from "./pages/financial/FinancialPage";
 import NexusUltraPage from "./pages/nexus/NexusUltraPage";
+import TodayPage from "./pages/today/TodayPage";
 import NotFound from "@/pages/not-found";
 
 function ProtectedRoute({
@@ -48,6 +49,9 @@ function Router() {
       </Route>
       <Route path="/">
         <ProtectedRoute component={DashboardPage} />
+      </Route>
+      <Route path="/today">
+        <ProtectedRoute component={TodayPage} />
       </Route>
       <Route path="/fleet">
         <ProtectedRoute component={FleetPage} />

@@ -8,7 +8,7 @@ export default function DailyOverviewWidget({
 }: {
   module: ModuleConfig;
 }) {
-  const { user, stats, mode } = useAppState();
+  const { user, stats, mode, preferences } = useAppState();
   const hour = new Date().getHours();
   const greeting =
     hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
@@ -46,7 +46,9 @@ export default function DailyOverviewWidget({
           <div className="flex items-center gap-2 mb-0.5">
             <Icon className="h-4 w-4 text-amber-400" />
             <span className="text-sm font-heading font-semibold">
-              {greeting}, {user?.displayName || user?.username}
+              {preferences.dashboard.showGreeting
+                ? `${greeting}, ${user?.displayName || user?.username}`
+                : module.title}
             </span>
           </div>
           <p className="text-xs text-muted-foreground">

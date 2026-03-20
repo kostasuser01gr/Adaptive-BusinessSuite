@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { GenerativeRenderer } from "@/components/generative/Registry";
+import { getAssistantToneMeta } from "@/lib/preferences";
 
 export default function AssistantChat() {
   const {
@@ -21,6 +22,7 @@ export default function AssistantChat() {
     toggleChat,
     processCommand,
     suggestions,
+    preferences,
     currentProposal,
     applyProposal,
     currentWorkflow,
@@ -32,6 +34,7 @@ export default function AssistantChat() {
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
+  const assistantTone = getAssistantToneMeta(preferences.assistant.tone);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -71,7 +74,7 @@ export default function AssistantChat() {
           <div>
             <h3 className="font-heading font-semibold text-sm">Assistant</h3>
             <p className="text-[10px] text-muted-foreground leading-none">
-              Ultra Intelligence
+              {assistantTone.subtitle}
             </p>
           </div>
         </div>
@@ -86,7 +89,7 @@ export default function AssistantChat() {
         </Button>
       </div>
 
-      {suggestions.length > 0 && (
+      {preferences.assistant.proactiveSuggestions && suggestions.length > 0 && (
         <div className="px-3 py-2 border-b border-white/5 bg-primary/[0.03]">
           <div className="flex items-center gap-1.5 mb-1.5">
             <Lightbulb className="h-3 w-3 text-amber-400" />
@@ -261,7 +264,7 @@ export default function AssistantChat() {
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask workspace AI..."
+            placeholder={assistantTone.placeholder}
             className="w-full bg-muted/20 border border-white/5 rounded-xl py-2.5 pl-3.5 pr-10 text-sm focus:outline-none focus:ring-1 focus:ring-primary/40 transition-all placeholder:text-muted-foreground/50"
             data-testid="input-chat"
           />

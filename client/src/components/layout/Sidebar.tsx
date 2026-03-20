@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useAppState } from "@/lib/store";
 import {
+  BellRing,
   CarFront,
   LayoutDashboard,
   Calendar,
@@ -19,13 +20,29 @@ import {
   ChevronDown,
   Sparkles,
   Shield,
+  Pin,
+  PinOff,
+  Clock3,
+  ArrowUpRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Link, useLocation } from "wouter";
+import { useLocation } from "wouter";
 import { ontologies } from "@shared/ontologies";
+import {
+  buildShellRouteCatalog,
+  getShellRouteKey,
+  supportedShellRoutes,
+  useShellMemory,
+} from "@/lib/shell-memory";
+import {
+  buildShellSignals,
+  deriveShellPosture,
+  type ShellPostureTone,
+} from "@/lib/shell-control";
 
 const ICON_MAP: Record<string, any> = {
   LayoutDashboard,
+  Sparkles,
   CarFront,
   Calendar,
   Users,
@@ -39,11 +56,126 @@ const ICON_MAP: Record<string, any> = {
 };
 
 export default function Sidebar() {
-  const { mode, activeOntology, setMode, toggleChat, logout, user } =
+  const {
+    mode,
+    activeOntology,
+    setMode,
+    toggleChat,
+    logout,
+    setNotificationsOpen,
+    stats,
+    unreadNotificationsCount,
+    user,
+  } =
     useAppState();
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [modeMenuOpen, setModeMenuOpen] = useState(false);
+  const shellRoutes = useMemo(
+    () => buildShellRouteCatalog(activeOntology),
+    [activeOntology],
+  );
+  const shellRouteMap = new Map(shellRoutes.map((route) => [route.path, route]));
+  const { favorites, recents, isFavorite, toggleFavorite } = useShellMemory(
+    user?.id,
+    shellRoutes,
+  );
+  const primaryLinks = activeOntology.navigation.filter((link) =>
+    supportedShellRoutes.has(link.path),
+  );
+  const pinnedRoutes = favorites
+    .map((path) => shellRouteMap.get(path))
+    .filter((route): route is NonNullable<typeof route> => Boolean(route));
+  const recentRoutes = recents
+    .filter((path) => !favorites.includes(path))
+    .map((path) => shellRouteMap.get(path))
+    .filter((route): route is NonNullable<typeof route> => Boolean(route));
+  const posture = useMemo(
+    () => deriveShellPosture({ stats, unreadNotificationsCount }),
+    [stats, unreadNotificationsCount],
+  );
+  const controlSignals = useMemo(
+    () =>
+      buildShellSignals({
+        activeOntology,
+        stats,
+        unreadNotificationsCount,
+      }),
+    [activeOntology, stats, unreadNotificationsCount],
+  );
+  const quickActions = useMemo(
+    () => [
+      {
+        id: "today",
+        label: "Today",
+        description: "Return to the live operator board.",
+        icon: Sparkles,
+        onClick: () => openRoute("/today"),
+      },
+      {
+        id: "tasks",
+        label: "Tasks",
+        description: "Drop into the active execution queue.",
+        icon: CheckSquare,
+        onClick: () => openRoute("/tasks"),
+      },
+      {
+        id: "notifications",
+        label: unreadNotificationsCount > 0 ? "Alerts" : "Inbox",
+        description:
+          unreadNotificationsCount > 0
+            ? `${unreadNotificationsCount} unread ${unreadNotificationsCount === 1 ? "alert" : "alerts"}`
+            : "Open the notification stack.",
+        icon: BellRing,
+        onClick: () => {
+          setNotificationsOpen(true);
+          setMobileOpen(false);
+        },
+      },
+      {
+        id: "assistant",
+        label: "Assistant",
+        description: "Open Nexus for guided actions.",
+        icon: Bot,
+        onClick: () => {
+          toggleChat();
+          setMobileOpen(false);
+        },
+      },
+    ],
+    [setNotificationsOpen, toggleChat, unreadNotificationsCount],
+  );
+
+  function openRoute(path: string) {
+    setLocation(path);
+    setMobileOpen(false);
+  }
+
+  function postureClasses(tone: ShellPostureTone) {
+    switch (tone) {
+      case "critical":
+        return "border-rose-400/20 bg-rose-400/10 text-rose-300";
+      case "attention":
+        return "border-amber-400/20 bg-amber-400/10 text-amber-300";
+      case "watch":
+        return "border-sky-400/20 bg-sky-400/10 text-sky-300";
+      default:
+        return "border-emerald-400/20 bg-emerald-400/10 text-emerald-300";
+    }
+  }
+
+  function signalClasses(tone: ShellPostureTone) {
+    switch (tone) {
+      case "critical":
+        return "border-rose-400/15 bg-rose-400/[0.08] hover:bg-rose-400/[0.12]";
+      case "attention":
+        return "border-amber-400/15 bg-amber-400/[0.08] hover:bg-amber-400/[0.12]";
+      case "watch":
+        return "border-sky-400/15 bg-sky-400/[0.08] hover:bg-sky-400/[0.12]";
+      default:
+        return "border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.05]";
+    }
+  }
 
   const sidebarContent = (
     <>
@@ -63,26 +195,211 @@ export default function Sidebar() {
       </div>
 
       <div className="flex-1 overflow-y-auto py-4 px-3 flex flex-col gap-0.5">
-        {activeOntology.navigation.map((link) => {
+        {pinnedRoutes.length > 0 ? (
+          <div className="mb-4">
+            <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70">
+              Pinned
+            </p>
+            <div
+              className="space-y-1"
+              data-testid="shell-pinned-section"
+            >
+              {pinnedRoutes.map((route) => {
+                const Icon = ICON_MAP[route.icon] || LayoutDashboard;
+                const isActive = location === route.path;
+                return (
+                  <button
+                    key={route.path}
+                    type="button"
+                    onClick={() => openRoute(route.path)}
+                    className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[12px] transition-colors ${
+                      isActive
+                        ? "bg-primary/10 text-primary"
+                        : "text-foreground/85 hover:bg-white/[0.04]"
+                    }`}
+                    data-testid={`shell-pinned-item-${getShellRouteKey(route.path)}`}
+                  >
+                    <Icon className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">{route.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
+
+        {recentRoutes.length > 0 ? (
+          <div className="mb-4">
+            <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70">
+              Recent
+            </p>
+            <div
+              className="space-y-1"
+              data-testid="shell-recent-section"
+            >
+              {recentRoutes.slice(0, 4).map((route) => {
+                const Icon = ICON_MAP[route.icon] || Clock3;
+                return (
+                  <button
+                    key={route.path}
+                    type="button"
+                    onClick={() => openRoute(route.path)}
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[12px] text-muted-foreground transition-colors hover:bg-white/[0.04] hover:text-foreground"
+                    data-testid={`shell-recent-item-${getShellRouteKey(route.path)}`}
+                  >
+                    <Icon className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">{route.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
+
+        <div
+          className="mb-4 rounded-2xl border border-white/[0.08] bg-gradient-to-br from-white/[0.05] to-white/[0.02] p-3 shadow-[0_12px_40px_rgba(5,10,20,0.28)]"
+          data-testid="shell-control-card"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70">
+                Control Center
+              </p>
+              <div className="mt-2 flex items-center gap-2">
+                <span
+                  className={`rounded-full border px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] ${postureClasses(posture.tone)}`}
+                  data-testid="shell-posture-badge"
+                >
+                  {posture.label}
+                </span>
+                <span className="truncate text-[11px] text-foreground/80">
+                  {posture.primaryFocus}
+                </span>
+              </div>
+              <p className="mt-2 text-[11px] leading-5 text-muted-foreground">
+                {posture.summary}
+              </p>
+            </div>
+            <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-2">
+              <ArrowUpRight className="h-4 w-4 text-primary" />
+            </div>
+          </div>
+
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            {controlSignals.map((signal) => (
+              <button
+                key={signal.id}
+                type="button"
+                onClick={() => {
+                  if (signal.id === "alerts") {
+                    setNotificationsOpen(true);
+                    setMobileOpen(false);
+                    return;
+                  }
+
+                  openRoute(signal.href);
+                }}
+                className={`rounded-xl border px-3 py-2.5 text-left transition-colors ${signalClasses(signal.tone)}`}
+                data-testid={`shell-signal-${signal.id}`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/80">
+                    {signal.label}
+                  </span>
+                  <span className="text-sm font-semibold text-foreground">
+                    {signal.count}
+                  </span>
+                </div>
+                <p className="mt-1 text-[10px] leading-4 text-muted-foreground">
+                  {signal.description}
+                </p>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {primaryLinks.map((link) => {
           const Icon = ICON_MAP[link.icon] || LayoutDashboard;
           const isActive = location === link.path;
+          const routeKey = getShellRouteKey(link.path);
           return (
-            <Link key={link.path} href={link.path}>
-              <div
-                onClick={() => setMobileOpen(false)}
-                className={`flex items-center px-3 py-2 rounded-lg transition-all duration-150 cursor-pointer text-[13px] ${
+            <div
+              key={link.path}
+              className={`flex items-center gap-1 rounded-lg px-1 py-0.5 transition-all duration-150 ${
+                isActive ? "bg-primary/10" : ""
+              }`}
+            >
+              <button
+                type="button"
+                onClick={() => openRoute(link.path)}
+                className={`flex min-w-0 flex-1 items-center px-2 py-2 text-left text-[13px] transition-all duration-150 ${
                   isActive
-                    ? "bg-primary/10 text-primary font-medium"
-                    : "text-muted-foreground hover:bg-white/[0.04] hover:text-foreground"
+                    ? "text-primary font-medium"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
                 data-testid={`link-${link.label.toLowerCase()}`}
               >
                 <Icon className="h-4 w-4 mr-2.5 shrink-0" />
-                {link.label}
+                <span className="truncate">{link.label}</span>
+              </button>
+              <div
+                className="flex items-center"
+              >
+                <button
+                  type="button"
+                  onClick={() => toggleFavorite(link.path)}
+                  className={`rounded-md p-1.5 transition-colors ${
+                    isFavorite(link.path)
+                      ? "text-primary hover:bg-primary/10"
+                      : "text-muted-foreground hover:bg-white/[0.04] hover:text-foreground"
+                  }`}
+                  aria-label={
+                    isFavorite(link.path)
+                      ? `Unpin ${link.label}`
+                      : `Pin ${link.label}`
+                  }
+                  data-testid={`button-favorite-route-${routeKey}`}
+                >
+                  {isFavorite(link.path) ? (
+                    <PinOff className="h-3.5 w-3.5" />
+                  ) : (
+                    <Pin className="h-3.5 w-3.5" />
+                  )}
+                </button>
               </div>
-            </Link>
+            </div>
           );
         })}
+
+        <div className="mt-4 mb-2">
+          <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70">
+            Quick Actions
+          </p>
+          <div className="grid grid-cols-2 gap-2 px-1" data-testid="shell-quick-actions">
+            {quickActions.map((action) => {
+              const Icon = action.icon;
+              return (
+                <button
+                  key={action.id}
+                  type="button"
+                  onClick={action.onClick}
+                  className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-left transition-colors hover:bg-white/[0.05]"
+                  data-testid={`button-shell-quick-${action.id}`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Icon className="h-3.5 w-3.5 text-primary" />
+                    <span className="text-[11px] font-semibold text-foreground">
+                      {action.label}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-[10px] leading-4 text-muted-foreground">
+                    {action.description}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
       <div className="p-3 border-t border-white/5 space-y-2 shrink-0">

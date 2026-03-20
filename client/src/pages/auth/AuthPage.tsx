@@ -3,10 +3,11 @@ import { useLocation } from "wouter";
 import { useAppState } from "@/lib/store";
 import { Sparkles, ArrowRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { resolvePostAuthRoute } from "@/lib/preferences";
 
 export default function AuthPage() {
   const [, setLocation] = useLocation();
-  const { login, register, isAuthenticated } = useAppState();
+  const { login, register, isAuthenticated, preferences } = useAppState();
   const [isLogin, setIsLogin] = useState(true);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -16,9 +17,9 @@ export default function AuthPage() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      setLocation("/");
+      setLocation(resolvePostAuthRoute(preferences));
     }
-  }, [isAuthenticated, setLocation]);
+  }, [isAuthenticated, preferences, setLocation]);
 
   if (isAuthenticated) return null;
 
@@ -31,12 +32,13 @@ export default function AuthPage() {
     setError("");
     setLoading(true);
     try {
+      let nextUser: any;
       if (isLogin) {
-        await login(username, password);
+        nextUser = await login(username, password);
       } else {
-        await register(username, password, displayName || username);
+        nextUser = await register(username, password, displayName || username);
       }
-      setLocation("/");
+      setLocation(resolvePostAuthRoute(nextUser?.preferences));
     } catch (err: any) {
       setError(err.message || "Something went wrong");
     } finally {

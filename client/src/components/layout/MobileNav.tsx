@@ -1,14 +1,14 @@
 import React from "react";
 import { useAppState } from "@/lib/store";
 import { useLocation, Link } from "wouter";
-import { LayoutDashboard, Car, Calendar, Bot, Settings } from "lucide-react";
+import { Sparkles, Car, Calendar, Bot, Settings } from "lucide-react";
 
 export default function MobileNav() {
   const { toggleChat, mode } = useAppState();
   const [location] = useLocation();
 
   const items = [
-    { icon: LayoutDashboard, label: "Home", path: "/" },
+    { icon: Sparkles, label: "Today", path: "/today" },
     ...(mode === "rental"
       ? [
           { icon: Car, label: "Fleet", path: "/fleet" },

@@ -10,6 +10,13 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ontologies, type Ontology, defaultOntology } from "@shared/ontologies";
 import { WebSyncCoordinator } from "./sync";
+import {
+  defaultPreferences,
+  mergePreferences,
+  normalizePreferences,
+  type AppPreferences,
+  type AppPreferencesPatch,
+} from "./preferences";
 
 export type UserMode = "rental" | "personal" | "professional" | "custom";
 
@@ -19,6 +26,7 @@ export interface ModuleConfig {
   title: string;
   w: number;
   h: number;
+  position: number;
   data?: any;
   visible?: boolean;
 }
@@ -40,6 +48,7 @@ interface AppContextType {
   user: any;
   mode: UserMode;
   activeOntology: Ontology;
+  preferences: AppPreferences;
   modules: ModuleConfig[];
   chatHistory: Message[];
   stats: any;
@@ -52,14 +61,15 @@ interface AppContextType {
   currentProposal: any | null;
   currentWorkflow: any[] | null;
   currentGenerativeUI: any | null;
-  login: (username: string, password: string) => Promise<void>;
+  login: (username: string, password: string) => Promise<any>;
   register: (
     username: string,
     password: string,
     displayName?: string,
-  ) => Promise<void>;
+  ) => Promise<any>;
   logout: () => Promise<void>;
   setMode: (mode: UserMode) => Promise<void>;
+  updatePreferences: (patch: AppPreferencesPatch) => Promise<AppPreferences>;
   removeModule: (id: string) => Promise<void>;
   toggleChat: () => void;
   setCommandBarOpen: (open: boolean) => void;
@@ -95,6 +105,10 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   const isAuthenticated = !!userData && !userLoading;
   const user = userData || null;
   const mode = (user?.mode as UserMode) || "rental";
+  const preferences = useMemo(
+    () => normalizePreferences(user?.preferences ?? defaultPreferences),
+    [user?.preferences],
+  );
 
   const activeOntology = useMemo(
     () => ontologies[mode] || defaultOntology,
@@ -106,11 +120,19 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     queryFn: api.modules.list,
     enabled: isAuthenticated,
   });
-  const modules: ModuleConfig[] = (modulesData || []).map((m: any) => ({
-    ...m,
-    w: parseInt(m.w) || 1,
-    h: parseInt(m.h) || 1,
-  }));
+  const modules: ModuleConfig[] = (modulesData || [])
+    .map((m: any, index: number) => ({
+      ...m,
+      w: parseInt(m.w) || 1,
+      h: parseInt(m.h) || 1,
+      position: typeof m.position === "number" ? m.position : index,
+    }))
+    .sort((left: ModuleConfig, right: ModuleConfig) => {
+      if (left.position !== right.position) {
+        return left.position - right.position;
+      }
+      return left.title.localeCompare(right.title);
+    });
 
   const { data: chatData } = useQuery({
     queryKey: ["/api/chat"],
@@ -189,6 +211,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     qc.setQueryData(["/api/auth/me"], user);
     toast.success(`Welcome back, ${user.displayName || user.username}`);
     qc.invalidateQueries();
+    return user;
   };
   const register = async (
     username: string,
@@ -199,6 +222,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     qc.setQueryData(["/api/auth/me"], user);
     toast.success("Account created successfully");
     qc.invalidateQueries();
+    return user;
   };
   const logout = async () => {
     await api.auth.logout();
@@ -220,6 +244,29 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     } catch (e) {
       qc.setQueryData(["/api/auth/me"], prevUser);
       toast.error("Failed to switch mode");
+    }
+  };
+
+  const updatePreferences = async (patch: AppPreferencesPatch) => {
+    const previousUser = qc.getQueryData(["/api/auth/me"]);
+    const previousPreferences = normalizePreferences(
+      (previousUser as any)?.preferences ?? defaultPreferences,
+    );
+    const nextPreferences = mergePreferences(previousPreferences, patch);
+
+    qc.setQueryData(["/api/auth/me"], (old: any) =>
+      old ? { ...old, preferences: nextPreferences } : old,
+    );
+
+    try {
+      await api.user.setPreferences(nextPreferences);
+      toast.success("Workspace preferences updated");
+      await qc.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      return nextPreferences;
+    } catch (e) {
+      qc.setQueryData(["/api/auth/me"], previousUser);
+      toast.error("Failed to update workspace preferences");
+      throw e;
     }
   };
 
@@ -337,6 +384,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
         user,
         mode,
         activeOntology,
+        preferences,
         modules,
         chatHistory,
         stats,
@@ -353,6 +401,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
         register,
         logout,
         setMode,
+        updatePreferences,
         removeModule,
         toggleChat,
         setCommandBarOpen,
