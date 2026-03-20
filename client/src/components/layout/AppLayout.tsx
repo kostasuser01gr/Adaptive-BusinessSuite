@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo } from "react";
 import { useAppState } from "@/lib/store";
 import Sidebar from "./Sidebar";
 import AssistantChat from "./AssistantChat";
@@ -6,11 +6,21 @@ import CommandBar from "./CommandBar";
 import MobileNav from "./MobileNav";
 import NotificationsSheet from "./NotificationsSheet";
 import InstallAppButton from "./InstallAppButton";
-import { Search, Bell, Loader2, Command } from "lucide-react";
+import {
+  Search,
+  Bell,
+  Loader2,
+  Command,
+  Pin,
+  PinOff,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useLocation } from "wouter";
+import { buildShellRouteCatalog, useShellMemory } from "@/lib/shell-memory";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const {
+    activeOntology,
     isAuthenticated,
     isLoading,
     user,
@@ -24,6 +34,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     markNotificationRead,
     markAllNotificationsRead,
   } = useAppState();
+  const [location] = useLocation();
+  const shellRoutes = useMemo(
+    () => buildShellRouteCatalog(activeOntology),
+    [activeOntology],
+  );
+  const { isFavorite, rememberPath, toggleFavorite } = useShellMemory(
+    user?.id,
+    shellRoutes,
+  );
+  const currentRoute = shellRoutes.find((route) => route.path === location) || null;
 
   useEffect(() => {
     document.documentElement.dataset.motion = preferences.shell.motion;
@@ -34,6 +54,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       delete document.documentElement.dataset.appDensity;
     };
   }, [preferences.shell.density, preferences.shell.motion]);
+
+  useEffect(() => {
+    if (!isAuthenticated || location === "/auth") {
+      return;
+    }
+
+    rememberPath(location);
+  }, [isAuthenticated, location, rememberPath]);
 
   if (isLoading) {
     return (
@@ -91,6 +119,33 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 <Command className="h-2.5 w-2.5 inline" />K
               </kbd>
             </button>
+            {currentRoute ? (
+              <div className="hidden items-center gap-1.5 rounded-lg border border-white/5 bg-muted/20 px-2 py-1 md:flex">
+                <span
+                  className="text-[11px] font-medium text-foreground/80"
+                  data-testid="text-current-surface"
+                >
+                  {currentRoute.label}
+                </span>
+                <button
+                  type="button"
+                  className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-white/[0.05] hover:text-foreground"
+                  onClick={() => toggleFavorite(currentRoute.path)}
+                  aria-label={
+                    isFavorite(currentRoute.path)
+                      ? `Unpin ${currentRoute.label}`
+                      : `Pin ${currentRoute.label}`
+                  }
+                  data-testid="button-toggle-current-favorite"
+                >
+                  {isFavorite(currentRoute.path) ? (
+                    <PinOff className="h-3.5 w-3.5" />
+                  ) : (
+                    <Pin className="h-3.5 w-3.5" />
+                  )}
+                </button>
+              </div>
+            ) : null}
           </div>
 
           <div className="flex items-center gap-2">

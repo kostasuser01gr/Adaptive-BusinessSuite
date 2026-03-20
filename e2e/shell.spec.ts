@@ -179,4 +179,27 @@ test.describe("Shell experience", () => {
       0,
     );
   });
+
+  test("persists pinned and recent surfaces in the workspace shell", async ({
+    page,
+  }) => {
+    await registerAndLogin(page);
+
+    await page.goto("/tasks");
+    await expect(page.getByTestId("text-tasks-title")).toBeVisible();
+    await page.getByTestId("button-favorite-route-tasks").click();
+
+    await page.goto("/notes");
+    await expect(page.getByTestId("text-notes-title")).toBeVisible();
+
+    await expect(page.getByTestId("shell-pinned-section")).toBeVisible();
+    await expect(page.getByTestId("shell-pinned-item-tasks")).toBeVisible();
+    await expect(page.getByTestId("shell-recent-section")).toBeVisible();
+    await expect(page.getByTestId("shell-recent-item-notes")).toBeVisible();
+
+    await page.getByTestId("button-command-bar").click();
+    await expect(page.getByTestId("command-bar")).toBeVisible();
+    await expect(page.getByTestId("command-bar")).toContainText("Pinned");
+    await expect(page.getByTestId("command-bar")).toContainText("Tasks");
+  });
 });

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useAppState } from "@/lib/store";
 import {
   CarFront,
@@ -19,10 +19,19 @@ import {
   ChevronDown,
   Sparkles,
   Shield,
+  Pin,
+  PinOff,
+  Clock3,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Link, useLocation } from "wouter";
+import { useLocation } from "wouter";
 import { ontologies } from "@shared/ontologies";
+import {
+  buildShellRouteCatalog,
+  getShellRouteKey,
+  supportedShellRoutes,
+  useShellMemory,
+} from "@/lib/shell-memory";
 
 const ICON_MAP: Record<string, any> = {
   LayoutDashboard,
@@ -42,9 +51,33 @@ const ICON_MAP: Record<string, any> = {
 export default function Sidebar() {
   const { mode, activeOntology, setMode, toggleChat, logout, user } =
     useAppState();
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [modeMenuOpen, setModeMenuOpen] = useState(false);
+  const shellRoutes = useMemo(
+    () => buildShellRouteCatalog(activeOntology),
+    [activeOntology],
+  );
+  const shellRouteMap = new Map(shellRoutes.map((route) => [route.path, route]));
+  const { favorites, recents, isFavorite, toggleFavorite } = useShellMemory(
+    user?.id,
+    shellRoutes,
+  );
+  const primaryLinks = activeOntology.navigation.filter((link) =>
+    supportedShellRoutes.has(link.path),
+  );
+  const pinnedRoutes = favorites
+    .map((path) => shellRouteMap.get(path))
+    .filter((route): route is NonNullable<typeof route> => Boolean(route));
+  const recentRoutes = recents
+    .filter((path) => !favorites.includes(path))
+    .map((path) => shellRouteMap.get(path))
+    .filter((route): route is NonNullable<typeof route> => Boolean(route));
+
+  function openRoute(path: string) {
+    setLocation(path);
+    setMobileOpen(false);
+  }
 
   const sidebarContent = (
     <>
@@ -64,24 +97,117 @@ export default function Sidebar() {
       </div>
 
       <div className="flex-1 overflow-y-auto py-4 px-3 flex flex-col gap-0.5">
-        {activeOntology.navigation.map((link) => {
+        {pinnedRoutes.length > 0 ? (
+          <div className="mb-4">
+            <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70">
+              Pinned
+            </p>
+            <div
+              className="space-y-1"
+              data-testid="shell-pinned-section"
+            >
+              {pinnedRoutes.map((route) => {
+                const Icon = ICON_MAP[route.icon] || LayoutDashboard;
+                const isActive = location === route.path;
+                return (
+                  <button
+                    key={route.path}
+                    type="button"
+                    onClick={() => openRoute(route.path)}
+                    className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[12px] transition-colors ${
+                      isActive
+                        ? "bg-primary/10 text-primary"
+                        : "text-foreground/85 hover:bg-white/[0.04]"
+                    }`}
+                    data-testid={`shell-pinned-item-${getShellRouteKey(route.path)}`}
+                  >
+                    <Icon className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">{route.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
+
+        {recentRoutes.length > 0 ? (
+          <div className="mb-4">
+            <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70">
+              Recent
+            </p>
+            <div
+              className="space-y-1"
+              data-testid="shell-recent-section"
+            >
+              {recentRoutes.slice(0, 4).map((route) => {
+                const Icon = ICON_MAP[route.icon] || Clock3;
+                return (
+                  <button
+                    key={route.path}
+                    type="button"
+                    onClick={() => openRoute(route.path)}
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[12px] text-muted-foreground transition-colors hover:bg-white/[0.04] hover:text-foreground"
+                    data-testid={`shell-recent-item-${getShellRouteKey(route.path)}`}
+                  >
+                    <Icon className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">{route.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
+
+        {primaryLinks.map((link) => {
           const Icon = ICON_MAP[link.icon] || LayoutDashboard;
           const isActive = location === link.path;
+          const routeKey = getShellRouteKey(link.path);
           return (
-            <Link key={link.path} href={link.path}>
-              <div
-                onClick={() => setMobileOpen(false)}
-                className={`flex items-center px-3 py-2 rounded-lg transition-all duration-150 cursor-pointer text-[13px] ${
+            <div
+              key={link.path}
+              className={`flex items-center gap-1 rounded-lg px-1 py-0.5 transition-all duration-150 ${
+                isActive ? "bg-primary/10" : ""
+              }`}
+            >
+              <button
+                type="button"
+                onClick={() => openRoute(link.path)}
+                className={`flex min-w-0 flex-1 items-center px-2 py-2 text-left text-[13px] transition-all duration-150 ${
                   isActive
-                    ? "bg-primary/10 text-primary font-medium"
-                    : "text-muted-foreground hover:bg-white/[0.04] hover:text-foreground"
+                    ? "text-primary font-medium"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
                 data-testid={`link-${link.label.toLowerCase()}`}
               >
                 <Icon className="h-4 w-4 mr-2.5 shrink-0" />
-                {link.label}
+                <span className="truncate">{link.label}</span>
+              </button>
+              <div
+                className="flex items-center"
+              >
+                <button
+                  type="button"
+                  onClick={() => toggleFavorite(link.path)}
+                  className={`rounded-md p-1.5 transition-colors ${
+                    isFavorite(link.path)
+                      ? "text-primary hover:bg-primary/10"
+                      : "text-muted-foreground hover:bg-white/[0.04] hover:text-foreground"
+                  }`}
+                  aria-label={
+                    isFavorite(link.path)
+                      ? `Unpin ${link.label}`
+                      : `Pin ${link.label}`
+                  }
+                  data-testid={`button-favorite-route-${routeKey}`}
+                >
+                  {isFavorite(link.path) ? (
+                    <PinOff className="h-3.5 w-3.5" />
+                  ) : (
+                    <Pin className="h-3.5 w-3.5" />
+                  )}
+                </button>
               </div>
-            </Link>
+            </div>
           );
         })}
       </div>
