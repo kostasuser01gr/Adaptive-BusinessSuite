@@ -60,6 +60,17 @@ export default function CommandBar() {
 
   const commands: CommandItem[] = [
     {
+      id: "today",
+      label: "Today",
+      description: "Open the live operator command center",
+      icon: <Sparkles className="h-4 w-4" />,
+      action: () => {
+        setLocation("/today");
+        setCommandBarOpen(false);
+      },
+      category: "Navigation",
+    },
+    {
       id: "dashboard",
       label: "Dashboard",
       description: "Go to main dashboard",

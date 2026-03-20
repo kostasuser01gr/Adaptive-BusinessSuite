@@ -49,3 +49,14 @@ test("resolvePostAuthRoute returns the persisted route when valid", () => {
 
   assert.equal(route, "/tasks");
 });
+
+test("resolvePostAuthRoute supports the today surface", () => {
+  const route = resolvePostAuthRoute({
+    ...defaultPreferences,
+    workspace: {
+      postAuthRoute: "/today",
+    },
+  });
+
+  assert.equal(route, "/today");
+});

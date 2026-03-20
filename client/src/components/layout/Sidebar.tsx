@@ -26,6 +26,7 @@ import { ontologies } from "@shared/ontologies";
 
 const ICON_MAP: Record<string, any> = {
   LayoutDashboard,
+  Sparkles,
   CarFront,
   Calendar,
   Users,

@@ -1,5 +1,6 @@
 export type PostAuthRoute =
   | "/"
+  | "/today"
   | "/fleet"
   | "/bookings"
   | "/customers"
@@ -61,6 +62,11 @@ export const postAuthRouteOptions: Array<{
   label: string;
   description: string;
 }> = [
+  {
+    value: "/today",
+    label: "Today",
+    description: "Open the live operator board with the next actions and watchlists.",
+  },
   {
     value: "/",
     label: "Dashboard",
