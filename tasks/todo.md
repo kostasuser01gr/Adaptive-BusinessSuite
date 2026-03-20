@@ -6,7 +6,7 @@
 - [x] Re-score remaining operational and supply-chain risks before editing.
 - [x] Apply the smallest safe hardening changes that reduce the highest remaining risks.
 - [x] Re-run the local live matrix, adversarial probes, and Docker deployment validation.
-- [ ] Push the V6 hardening head and verify the exact remote workflows again.
+- [x] Push the V6 hardening head and verify the exact remote workflows again.
 - [x] Update evidence, lessons, runbooks, and final review notes.
 
 ## Topology Summary
@@ -42,7 +42,7 @@
 
 ## Current Phase
 
-- Phase 12: remote verification for the V6 hardening head
+- Phase 16: final reporting
 
 ## Risk Ledger
 
@@ -89,3 +89,4 @@
   - `FAIL-002` Environment misuse during Playwright orchestration. Root cause: manual prod server run without `PLAYWRIGHT_USE_PROD_SERVER=1`, causing CSRF/session mismatch. Reclassified as operator error, corrected by using the repository's intended test orchestration.
 - `FAIL-003` Local Docker validation blocker. Root cause: Colima was installed but not running. Reclassified as environment blocker, resolved by starting Colima and re-running Docker validation.
 - `FAIL-004` Mobile SBOM generation failed under `npx` bootstrap. Reclassified as tooling bootstrap defect, resolved by switching to `npm exec --package=@cyclonedx/cyclonedx-npm -- ...`.
+- Latest remote workflow result: the exact V6 hardening head was verified green in `CI`, `Security`, and `CodeQL`.
