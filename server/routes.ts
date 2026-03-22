@@ -713,11 +713,11 @@ export async function registerRoutes(
     "/api/vehicles",
     requireAuth,
     async (req: Request, res: Response) => {
-      const body = insertVehicleSchema.parse(req.body);
-      const v = await storage.createVehicle({
-        ...body,
+      const body = insertVehicleSchema.parse({
+        ...req.body,
         userId: req.session.userId!,
       });
+      const v = await storage.createVehicle(body);
       emitEvent(req.session.userId!, null, EventTypes.ENTITY_CREATED, {
         entityType: "vehicle",
         entityId: v.id,
@@ -769,11 +769,11 @@ export async function registerRoutes(
     "/api/customers",
     requireAuth,
     async (req: Request, res: Response) => {
-      const body = insertCustomerSchema.parse(req.body);
-      const c = await storage.createCustomer({
-        ...body,
+      const body = insertCustomerSchema.parse({
+        ...req.body,
         userId: req.session.userId!,
       });
+      const c = await storage.createCustomer(body);
       emitEvent(req.session.userId!, null, EventTypes.ENTITY_CREATED, {
         entityType: "customer",
         entityId: c.id,
