@@ -72,7 +72,7 @@ export async function fetchApi(
     }
   }
 
-  throw lastError ?? new Error(BACKEND_UNAVAILABLE_MESSAGE);
+  throw new Error(BACKEND_UNAVAILABLE_MESSAGE);
 }
 
 export const backendUnavailableMessage = BACKEND_UNAVAILABLE_MESSAGE;
