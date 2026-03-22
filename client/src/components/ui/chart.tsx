@@ -2,11 +2,9 @@
 
 import * as React from "react"
 import * as RechartsPrimitive from "recharts"
-import type {
-  LegendPayload,
-  TooltipContentProps,
-  TooltipPayloadEntry,
-} from "recharts"
+import type { LegendPayload } from "recharts/types/component/DefaultLegendContent"
+import type { TooltipContentProps } from "recharts/types/component/Tooltip"
+import type { Payload as TooltipPayloadEntry } from "recharts/types/component/DefaultTooltipContent"
 
 import { cn } from "@/lib/utils"
 
