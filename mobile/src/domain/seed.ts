@@ -294,7 +294,8 @@ export function createSeedBundle(
   const user: UserProfile = {
     id: ownerId,
     username: "",
-    password: "",
+    passwordHash: "",
+    passwordSalt: "",
     displayName: "",
     onboardingComplete: true,
     createdAt: nowIso(),

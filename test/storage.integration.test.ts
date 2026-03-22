@@ -93,7 +93,7 @@ skip("storage: update booking status and dates", async () => {
   });
   const booking = await s.createBooking({ userId: user.id, status: "pending" });
 
-  const updated = await s.updateBooking(booking.id, {
+  const updated = await s.updateBooking(booking.id, user.id, {
     status: "active",
     startDate: new Date("2025-07-01T00:00:00.000Z"),
   });
@@ -142,10 +142,10 @@ skip("storage: vehicle CRUD", async () => {
   assert.equal(vehicle.make, "Toyota");
   assert.equal(vehicle.status, "available");
 
-  const updated = await s.updateVehicle(vehicle.id, { status: "rented" });
+  const updated = await s.updateVehicle(vehicle.id, user.id, { status: "rented" });
   assert.equal(updated?.status, "rented");
 
-  await s.deleteVehicle(vehicle.id);
+  await s.deleteVehicle(vehicle.id, user.id);
   const gone = await s.getVehicle(vehicle.id);
   assert.equal(gone, undefined);
 });

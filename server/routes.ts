@@ -6,8 +6,9 @@ import csurf from "@dr.pogodin/csurf";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
-import { storage } from "./storage";
+import { storage, parsePagination } from "./storage";
 import { pool } from "./db";
+import { logger } from "./logger";
 import {
   insertUserSchema,
   insertVehicleSchema,
@@ -17,6 +18,7 @@ import {
   insertNoteSchema,
   insertAutomationSchema,
   insertInspectionSchema,
+  insertModuleSchema,
 } from "@shared/schema";
 import MemoryStore from "memorystore";
 import { buildNexusUltraPayload } from "./nexus-ultra";
@@ -40,7 +42,7 @@ function getAuthBucketKey(req: Request): string {
 const makeLimiter = () =>
   rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: env.NODE_ENV === "test" ? 10000 : 20,
+    max: Number(process.env.RATE_LIMIT_AUTH_MAX) || 20,
     standardHeaders: true,
     legacyHeaders: false,
     skipSuccessfulRequests: true,
@@ -318,7 +320,7 @@ export async function registerRoutes(
       if (!ontologies[mode])
         return res.status(400).json({ message: "Invalid ontology" });
       const userId = req.session.userId!;
-      await storage.updateUser(userId, { mode } as any);
+      await storage.updateUser(userId, { mode });
       await storage.deleteAllModulesByUser(userId);
       const created = [];
       const seedModules =
@@ -352,9 +354,24 @@ export async function registerRoutes(
     requireAuth,
     async (req: Request, res: Response) => {
       const userId = req.session.userId!;
+      if (
+        req.body == null ||
+        typeof req.body !== "object" ||
+        Array.isArray(req.body)
+      ) {
+        return res
+          .status(400)
+          .json({ message: "Preferences must be a JSON object" });
+      }
+      const raw = JSON.stringify(req.body);
+      if (raw.length > 8192) {
+        return res
+          .status(400)
+          .json({ message: "Preferences payload too large (max 8 KB)" });
+      }
       const user = await storage.updateUser(userId, {
         preferences: req.body,
-      } as any);
+      });
       return res.json(user);
     },
   );
@@ -377,17 +394,13 @@ export async function registerRoutes(
   });
 
   app.post("/api/modules", requireAuth, async (req: Request, res: Response) => {
-    const mod = await storage.createModule({
+    const body = insertModuleSchema.parse({
+      ...req.body,
       userId: req.session.userId!,
       type: req.body.type || "generic",
       title: req.body.title || "New Module",
-      w: String(req.body.w || "1"),
-      h: String(req.body.h || "1"),
-      data: req.body.data || null,
-      position: req.body.position || 0,
-      visible: true,
-      workspaceId: null,
     });
+    const mod = await storage.createModule(body);
     return res.json(mod);
   });
 
@@ -396,7 +409,9 @@ export async function registerRoutes(
     requireAuth,
     async (req: Request, res: Response) => {
       const id = getRouteParam(req, "id");
-      const mod = await storage.updateModule(id, req.body);
+      const updates = insertModuleSchema.partial().parse(req.body);
+      const mod = await storage.updateModule(id, req.session.userId!, updates);
+      if (!mod) return res.status(404).json({ message: "Module not found" });
       return res.json(mod);
     },
   );
@@ -406,7 +421,7 @@ export async function registerRoutes(
     requireAuth,
     async (req: Request, res: Response) => {
       const id = getRouteParam(req, "id");
-      await storage.deleteModule(id);
+      await storage.deleteModule(id, req.session.userId!);
       return res.json({ ok: true });
     },
   );
@@ -450,7 +465,7 @@ export async function registerRoutes(
     }
     if (result.switchMode) {
       const nextMode = result.switchMode as UserMode;
-      await storage.updateUser(userId, { mode: result.switchMode } as any);
+      await storage.updateUser(userId, { mode: result.switchMode });
       await storage.deleteAllModulesByUser(userId);
       const seedModules =
         defaultModulesByOntology[nextMode] || defaultModulesByOntology.rental;
@@ -533,7 +548,7 @@ export async function registerRoutes(
             result = await storage.createVehicle(vData);
             break;
           case "update-vehicle":
-            result = await storage.updateVehicle(action.id, action.payload);
+            result = await storage.updateVehicle(action.id, userId, action.payload);
             break;
           case "create-customer":
             const cData = insertCustomerSchema.parse({
@@ -594,7 +609,7 @@ export async function registerRoutes(
     requireAuth,
     async (req: Request, res: Response) => {
       const id = getRouteParam(req, "id");
-      await storage.markNotificationRead(id);
+      await storage.markNotificationRead(id, req.session.userId!);
       return res.json({ ok: true });
     },
   );
@@ -640,14 +655,15 @@ export async function registerRoutes(
     requireAuth,
     async (req: Request, res: Response) => {
       try {
+        const userId = req.session.userId!;
         const data = insertInspectionSchema.parse({
           ...req.body,
-          userId: req.session.userId!,
+          userId,
           status: "processing",
         });
         const inspection = await storage.createInspection(data);
-        processInspection(inspection.id, data.mediaUrls || []).catch((err) =>
-          console.error("Vision processing failed:", err),
+        processInspection(inspection.id, userId, data.mediaUrls || []).catch((err) =>
+          logger.error({ err, inspectionId: inspection.id }, "Vision processing failed"),
         );
         return res.json(inspection);
       } catch (e: any) {
@@ -664,11 +680,19 @@ export async function registerRoutes(
     requireAuth,
     async (req: Request, res: Response) => {
       const actions = await storage.getActions(req.session.userId!, 1000);
+      const esc = (v: unknown): string => {
+        const s = String(v ?? "").replace(/"/g, '""');
+        // Strip CSV formula injection characters at start of field
+        const safe = s.replace(/^[=+\-@\t\r]/, "'$&");
+        return `"${safe}"`;
+      };
       const csv = [
         "ID,Timestamp,Actor,Action,Entity,Status,Description",
         ...actions.map(
           (a) =>
-            `${a.id},${a.createdAt},${a.actorType},${a.actionType},${a.entityType},${a.status},"${a.description}"`,
+            [a.id, a.createdAt, a.actorType, a.actionType, a.entityType, a.status, a.description]
+              .map(esc)
+              .join(","),
         ),
       ].join("\n");
 
@@ -683,16 +707,18 @@ export async function registerRoutes(
 
   // ── Vehicles ──
   app.get("/api/vehicles", requireAuth, async (req: Request, res: Response) => {
-    return res.json(await storage.getVehicles(req.session.userId!));
+    const pagination = parsePagination(req.query);
+    return res.json(await storage.getVehicles(req.session.userId!, pagination));
   });
   app.post(
     "/api/vehicles",
     requireAuth,
     async (req: Request, res: Response) => {
-      const v = await storage.createVehicle({
+      const body = insertVehicleSchema.parse({
         ...req.body,
         userId: req.session.userId!,
       });
+      const v = await storage.createVehicle(body);
       emitEvent(req.session.userId!, null, EventTypes.ENTITY_CREATED, {
         entityType: "vehicle",
         entityId: v.id,
@@ -706,8 +732,11 @@ export async function registerRoutes(
     requireAuth,
     async (req: Request, res: Response) => {
       const id = getRouteParam(req, "id");
-      const v = await storage.updateVehicle(id, req.body);
-      emitEvent(req.session.userId!, null, EventTypes.ENTITY_UPDATED, {
+      const userId = req.session.userId!;
+      const updates = insertVehicleSchema.partial().parse(req.body);
+      const v = await storage.updateVehicle(id, userId, updates);
+      if (!v) return res.status(404).json({ message: "Vehicle not found" });
+      emitEvent(userId, null, EventTypes.ENTITY_UPDATED, {
         entityType: "vehicle",
         entityId: id,
         data: v,
@@ -720,7 +749,7 @@ export async function registerRoutes(
     requireAuth,
     async (req: Request, res: Response) => {
       const id = getRouteParam(req, "id");
-      await storage.deleteVehicle(id);
+      await storage.deleteVehicle(id, req.session.userId!);
       emitEvent(req.session.userId!, null, EventTypes.ENTITY_DELETED, {
         entityType: "vehicle",
         entityId: id,
@@ -734,17 +763,19 @@ export async function registerRoutes(
     "/api/customers",
     requireAuth,
     async (req: Request, res: Response) => {
-      return res.json(await storage.getCustomers(req.session.userId!));
+      const pagination = parsePagination(req.query);
+      return res.json(await storage.getCustomers(req.session.userId!, pagination));
     },
   );
   app.post(
     "/api/customers",
     requireAuth,
     async (req: Request, res: Response) => {
-      const c = await storage.createCustomer({
+      const body = insertCustomerSchema.parse({
         ...req.body,
         userId: req.session.userId!,
       });
+      const c = await storage.createCustomer(body);
       emitEvent(req.session.userId!, null, EventTypes.ENTITY_CREATED, {
         entityType: "customer",
         entityId: c.id,
@@ -758,8 +789,11 @@ export async function registerRoutes(
     requireAuth,
     async (req: Request, res: Response) => {
       const id = getRouteParam(req, "id");
-      const c = await storage.updateCustomer(id, req.body);
-      emitEvent(req.session.userId!, null, EventTypes.ENTITY_UPDATED, {
+      const userId = req.session.userId!;
+      const updates = insertCustomerSchema.partial().parse(req.body);
+      const c = await storage.updateCustomer(id, userId, updates);
+      if (!c) return res.status(404).json({ message: "Customer not found" });
+      emitEvent(userId, null, EventTypes.ENTITY_UPDATED, {
         entityType: "customer",
         entityId: id,
         data: c,
@@ -772,7 +806,7 @@ export async function registerRoutes(
     requireAuth,
     async (req: Request, res: Response) => {
       const id = getRouteParam(req, "id");
-      await storage.deleteCustomer(id);
+      await storage.deleteCustomer(id, req.session.userId!);
       emitEvent(req.session.userId!, null, EventTypes.ENTITY_DELETED, {
         entityType: "customer",
         entityId: id,
@@ -783,20 +817,23 @@ export async function registerRoutes(
 
   // ── Bookings ──
   app.get("/api/bookings", requireAuth, async (req: Request, res: Response) => {
-    return res.json(await storage.getBookings(req.session.userId!));
+    const pagination = parsePagination(req.query);
+    return res.json(await storage.getBookings(req.session.userId!, pagination));
   });
   app.post(
     "/api/bookings",
     requireAuth,
     async (req: Request, res: Response) => {
-      const b = await storage.createBooking({
+      const userId = req.session.userId!;
+      const body = insertBookingSchema.parse({
         ...req.body,
-        userId: req.session.userId!,
+        userId,
         startDate: toDateOrNull(req.body.startDate),
         endDate: toDateOrNull(req.body.endDate),
       });
+      const b = await storage.createBooking(body);
       if (req.body.vehicleId) {
-        await storage.updateVehicle(req.body.vehicleId, { status: "rented" });
+        await storage.updateVehicle(req.body.vehicleId, userId, { status: "rented" });
       }
       emitEvent(req.session.userId!, null, EventTypes.ENTITY_CREATED, {
         entityType: "booking",
@@ -811,12 +848,13 @@ export async function registerRoutes(
     requireAuth,
     async (req: Request, res: Response) => {
       const id = getRouteParam(req, "id");
-      const existing = await storage.getBooking(id);
+      const userId = req.session.userId!;
+      const existing = await storage.getBooking(id, userId);
       if (!existing) {
         return res.status(404).json({ message: "Booking not found" });
       }
 
-      const updates = {
+      const updates = insertBookingSchema.partial().parse({
         ...req.body,
         ...(req.body.startDate !== undefined
           ? { startDate: toDateOrNull(req.body.startDate) }
@@ -824,19 +862,19 @@ export async function registerRoutes(
         ...(req.body.endDate !== undefined
           ? { endDate: toDateOrNull(req.body.endDate) }
           : {}),
-      };
+      });
 
-      const booking = await storage.updateBooking(id, updates);
+      const booking = await storage.updateBooking(id, userId, updates);
       const bookingVehicleId = booking?.vehicleId ?? existing.vehicleId;
       const bookingStatus = booking?.status ?? existing.status;
 
       if (bookingVehicleId) {
         if (bookingStatus === "completed" || bookingStatus === "cancelled") {
-          await storage.updateVehicle(bookingVehicleId, {
+          await storage.updateVehicle(bookingVehicleId, userId, {
             status: "available",
           });
         } else if (bookingStatus === "active") {
-          await storage.updateVehicle(bookingVehicleId, {
+          await storage.updateVehicle(bookingVehicleId, userId, {
             status: "rented",
           });
         }
@@ -851,16 +889,43 @@ export async function registerRoutes(
     },
   );
 
+  app.delete(
+    "/api/bookings/:id",
+    requireAuth,
+    async (req: Request, res: Response) => {
+      const id = getRouteParam(req, "id");
+      const userId = req.session.userId!;
+      const existing = await storage.getBooking(id, userId);
+      if (!existing) {
+        return res.status(404).json({ message: "Booking not found" });
+      }
+      // Release associated vehicle if booking was active
+      if (existing.vehicleId && existing.status === "active") {
+        await storage.updateVehicle(existing.vehicleId, userId, {
+          status: "available",
+        });
+      }
+      await storage.deleteBooking(id, userId);
+      emitEvent(userId, null, EventTypes.ENTITY_DELETED, {
+        entityType: "booking",
+        entityId: id,
+      });
+      return res.json({ ok: true });
+    },
+  );
+
   // ── Tasks ──
   app.get("/api/tasks", requireAuth, async (req: Request, res: Response) => {
-    return res.json(await storage.getTasks(req.session.userId!));
+    const pagination = parsePagination(req.query);
+    return res.json(await storage.getTasks(req.session.userId!, pagination));
   });
   app.post("/api/tasks", requireAuth, async (req: Request, res: Response) => {
-    const t = await storage.createTask({
+    const body = insertTaskSchema.parse({
       ...req.body,
       userId: req.session.userId!,
       dueDate: toDateOrNull(req.body.dueDate),
     });
+    const t = await storage.createTask(body);
     emitEvent(req.session.userId!, null, EventTypes.ENTITY_CREATED, {
       entityType: "task",
       entityId: t.id,
@@ -873,18 +938,20 @@ export async function registerRoutes(
     requireAuth,
     async (req: Request, res: Response) => {
       const id = getRouteParam(req, "id");
-      const task = await storage.updateTask(id, {
+      const userId = req.session.userId!;
+      const taskUpdates = insertTaskSchema.partial().parse({
         ...req.body,
         ...(req.body.dueDate !== undefined
           ? { dueDate: toDateOrNull(req.body.dueDate) }
           : {}),
       });
+      const task = await storage.updateTask(id, userId, taskUpdates);
 
       if (!task) {
         return res.status(404).json({ message: "Task not found" });
       }
 
-      emitEvent(req.session.userId!, null, EventTypes.ENTITY_UPDATED, {
+      emitEvent(userId, null, EventTypes.ENTITY_UPDATED, {
         entityType: "task",
         entityId: id,
         data: task,
@@ -897,7 +964,7 @@ export async function registerRoutes(
     requireAuth,
     async (req: Request, res: Response) => {
       const id = getRouteParam(req, "id");
-      await storage.deleteTask(id);
+      await storage.deleteTask(id, req.session.userId!);
       emitEvent(req.session.userId!, null, EventTypes.ENTITY_DELETED, {
         entityType: "task",
         entityId: id,
@@ -908,13 +975,15 @@ export async function registerRoutes(
 
   // ── Notes ──
   app.get("/api/notes", requireAuth, async (req: Request, res: Response) => {
-    return res.json(await storage.getNotes(req.session.userId!));
+    const pagination = parsePagination(req.query);
+    return res.json(await storage.getNotes(req.session.userId!, pagination));
   });
   app.post("/api/notes", requireAuth, async (req: Request, res: Response) => {
-    const note = await storage.createNote({
+    const body = insertNoteSchema.parse({
       ...req.body,
       userId: req.session.userId!,
     });
+    const note = await storage.createNote(body);
     emitEvent(req.session.userId!, null, EventTypes.ENTITY_CREATED, {
       entityType: "note",
       entityId: note.id,
@@ -927,13 +996,15 @@ export async function registerRoutes(
     requireAuth,
     async (req: Request, res: Response) => {
       const id = getRouteParam(req, "id");
-      const note = await storage.updateNote(id, req.body);
+      const userId = req.session.userId!;
+      const noteUpdates = insertNoteSchema.partial().parse(req.body);
+      const note = await storage.updateNote(id, userId, noteUpdates);
 
       if (!note) {
         return res.status(404).json({ message: "Note not found" });
       }
 
-      emitEvent(req.session.userId!, null, EventTypes.ENTITY_UPDATED, {
+      emitEvent(userId, null, EventTypes.ENTITY_UPDATED, {
         entityType: "note",
         entityId: id,
         data: note,
@@ -946,7 +1017,7 @@ export async function registerRoutes(
     requireAuth,
     async (req: Request, res: Response) => {
       const id = getRouteParam(req, "id");
-      await storage.deleteNote(id);
+      await storage.deleteNote(id, req.session.userId!);
       emitEvent(req.session.userId!, null, EventTypes.ENTITY_DELETED, {
         entityType: "note",
         entityId: id,

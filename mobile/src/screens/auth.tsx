@@ -66,8 +66,8 @@ export function LoginScreen({ navigation }: any) {
         ) : null}
         <AppButton
           label="Continue"
-          onPress={() => {
-            const result = login(username.trim(), password);
+          onPress={async () => {
+            const result = await login(username.trim(), password);
             if (!result.ok) setError(result.error || "Unable to log in.");
           }}
         />
@@ -123,8 +123,8 @@ export function SignUpScreen({ navigation }: any) {
         ) : null}
         <AppButton
           label="Create account"
-          onPress={() => {
-            const result = register(
+          onPress={async () => {
+            const result = await register(
               username.trim(),
               displayName.trim() || username.trim(),
               password,

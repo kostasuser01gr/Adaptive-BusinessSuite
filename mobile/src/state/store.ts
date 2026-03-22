@@ -1,3 +1,4 @@
+import * as Crypto from "expo-crypto";
 import * as Haptics from "expo-haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { create } from "zustand";
@@ -68,11 +69,11 @@ export interface AppStore {
     username: string,
     displayName: string,
     password: string,
-  ) => { ok: boolean; error?: string };
+  ) => Promise<{ ok: boolean; error?: string }>;
   login: (
     username: string,
     password: string,
-  ) => { ok: boolean; error?: string };
+  ) => Promise<{ ok: boolean; error?: string }>;
   logout: () => void;
   completeOnboarding: (mode: WorkspaceMode, workspaceName: string) => void;
   switchWorkspace: (workspaceId: string) => void;
@@ -220,7 +221,7 @@ export const useAppStore = create<AppStore>()(
           set({ modelSettings: initialModelSettings });
         }
       },
-      register: (username, displayName, password) => {
+      register: async (username, displayName, password) => {
         const existing = get().users.find(
           (user) => user.username.toLowerCase() === username.toLowerCase(),
         );
@@ -228,11 +229,19 @@ export const useAppStore = create<AppStore>()(
           return { ok: false, error: "Username already exists locally." };
         }
 
+        const passwordSalt = Crypto.getRandomBytes(16)
+          .reduce((s, b) => s + b.toString(16).padStart(2, "0"), "");
+        const passwordHash = await Crypto.digestStringAsync(
+          Crypto.CryptoDigestAlgorithm.SHA256,
+          password + passwordSalt,
+        );
+
         const user: UserProfile = {
           id: createId("user"),
           username,
           displayName,
-          password,
+          passwordHash,
+          passwordSalt,
           onboardingComplete: false,
           createdAt: nowIso(),
         };
@@ -244,26 +253,32 @@ export const useAppStore = create<AppStore>()(
 
         return { ok: true };
       },
-      login: (username, password) => {
-        const user = get().users.find(
+      login: async (username, password) => {
+        const candidates = get().users.filter(
           (candidate) =>
-            candidate.username.toLowerCase() === username.toLowerCase() &&
-            candidate.password === password,
+            candidate.username.toLowerCase() === username.toLowerCase(),
         );
-        if (!user) {
-          return { ok: false, error: "Invalid local credentials." };
+
+        for (const candidate of candidates) {
+          const hash = await Crypto.digestStringAsync(
+            Crypto.CryptoDigestAlgorithm.SHA256,
+            password + candidate.passwordSalt,
+          );
+          if (hash === candidate.passwordHash) {
+            const firstWorkspace =
+              get().workspaces.find((workspace) => workspace.ownerId === candidate.id) ||
+              null;
+            set({
+              session: {
+                activeUserId: candidate.id,
+                activeWorkspaceId: firstWorkspace?.id ?? null,
+              },
+            });
+            return { ok: true };
+          }
         }
 
-        const firstWorkspace =
-          get().workspaces.find((workspace) => workspace.ownerId === user.id) ||
-          null;
-        set({
-          session: {
-            activeUserId: user.id,
-            activeWorkspaceId: firstWorkspace?.id ?? null,
-          },
-        });
-        return { ok: true };
+        return { ok: false, error: "Invalid local credentials." };
       },
       logout: () =>
         set({

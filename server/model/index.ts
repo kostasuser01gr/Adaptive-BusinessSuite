@@ -3,6 +3,7 @@
  */
 
 import { getWorkspaceContext } from "./rag";
+import { logger } from "../logger";
 
 export interface AssistantContext {
   userId: string;
@@ -171,19 +172,27 @@ async function callOpenAI(messages: any[]): Promise<string> {
     "https://api.openai.com/v1";
   const model = process.env.OPENAI_MODEL || "gpt-4o-mini";
 
-  const response = await fetch(`${baseUrl}/chat/completions`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model,
-      messages,
-      max_tokens: 1024,
-      temperature: 0.2,
-    }),
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30_000);
+  let response: globalThis.Response;
+  try {
+    response = await fetch(`${baseUrl}/chat/completions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        messages,
+        max_tokens: 1024,
+        temperature: 0.2,
+      }),
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
 
   if (!response.ok) throw new Error(`OpenAI error: ${response.status}`);
   const data = (await response.json()) as any;
@@ -261,7 +270,7 @@ export async function processMessage(
       const raw = await callOpenAI(messages);
       return parseOpenAIResponse(raw);
     } catch (err) {
-      console.error("[model-gateway] OpenAI call failed:", err);
+      logger.error({ err }, "OpenAI call failed");
     }
   }
 

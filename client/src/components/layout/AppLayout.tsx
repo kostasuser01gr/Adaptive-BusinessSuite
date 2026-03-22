@@ -65,11 +65,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   if (isLoading) {
     return (
-      <div className="h-screen flex flex-col items-center justify-center bg-background gap-3">
+      <div className="h-screen flex flex-col items-center justify-center bg-background gap-3" role="status" aria-label="Loading application">
         <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-[0_0_30px_rgba(139,92,246,0.4)]">
           <div className="w-3 h-3 bg-white rounded-sm" />
         </div>
-        <Loader2 className="h-5 w-5 animate-spin text-primary" />
+        <Loader2 className="h-5 w-5 animate-spin text-primary" aria-hidden="true" />
       </div>
     );
   }
@@ -90,6 +90,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       data-motion={preferences.shell.motion}
       data-testid="app-shell"
     >
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:bg-primary focus:text-primary-foreground focus:px-4 focus:py-2 focus:rounded-lg focus:text-sm focus:font-medium"
+      >
+        Skip to main content
+      </a>
       <CommandBar />
       <NotificationsSheet
         notifications={notifications}
@@ -108,6 +114,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-3 pl-10 lg:pl-0">
             <button
               onClick={() => setCommandBarOpen(true)}
+              aria-label="Open command bar"
               className="flex items-center gap-2 bg-muted/30 hover:bg-muted/50 rounded-lg px-3 py-1.5 border border-white/5 transition-colors cursor-pointer group"
               data-testid="button-command-bar"
             >
@@ -155,6 +162,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               size="icon"
               className="relative h-8 w-8"
               onClick={() => setNotificationsOpen(true)}
+              aria-label={`Notifications${unreadNotificationsCount > 0 ? ` (${unreadNotificationsCount} unread)` : ""}`}
               data-testid="button-notifications"
             >
               <Bell className="h-4 w-4" />
@@ -178,7 +186,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        <main className={`flex-1 overflow-auto relative ${mainClass}`}>
+        <main id="main-content" className={`flex-1 overflow-auto relative ${mainClass}`}>
           {children}
         </main>
       </div>

@@ -1,4 +1,4 @@
-import { eq, desc, and, gt } from "drizzle-orm";
+import { eq, desc, and, gt, count } from "drizzle-orm";
 import { db } from "./db";
 import {
   users,
@@ -48,6 +48,23 @@ import {
   type InsertInspection,
 } from "@shared/schema";
 
+export interface PaginationParams {
+  limit: number;
+  offset: number;
+}
+
+export const DEFAULT_PAGE_LIMIT = 50;
+export const MAX_PAGE_LIMIT = 200;
+
+export function parsePagination(query: Record<string, unknown>): PaginationParams {
+  const limit = Math.min(
+    Math.max(1, Number(query.limit) || DEFAULT_PAGE_LIMIT),
+    MAX_PAGE_LIMIT,
+  );
+  const offset = Math.max(0, Number(query.offset) || 0);
+  return { limit, offset };
+}
+
 export interface SyncPayload {
   vehicles: Vehicle[];
   customers: Customer[];
@@ -82,67 +99,75 @@ export interface IStorage {
   createModule(module: InsertModule): Promise<Module>;
   updateModule(
     id: string,
+    userId: string,
     updates: Partial<InsertModule>,
   ): Promise<Module | undefined>;
-  deleteModule(id: string): Promise<void>;
+  deleteModule(id: string, userId: string): Promise<void>;
   deleteAllModulesByUser(userId: string): Promise<void>;
 
   getChatMessages(userId: string, limit?: number): Promise<ChatMessage[]>;
   createChatMessage(msg: InsertChatMessage): Promise<ChatMessage>;
 
-  getVehicles(userId: string): Promise<Vehicle[]>;
-  getVehicle(id: string): Promise<Vehicle | undefined>;
+  getVehicles(userId: string, pagination?: PaginationParams): Promise<Vehicle[]>;
+  getVehicle(id: string, userId: string): Promise<Vehicle | undefined>;
   createVehicle(v: InsertVehicle): Promise<Vehicle>;
   updateVehicle(
     id: string,
+    userId: string,
     updates: Partial<InsertVehicle>,
   ): Promise<Vehicle | undefined>;
-  deleteVehicle(id: string): Promise<void>;
+  deleteVehicle(id: string, userId: string): Promise<void>;
 
-  getCustomers(userId: string): Promise<Customer[]>;
-  getCustomer(id: string): Promise<Customer | undefined>;
+  getCustomers(userId: string, pagination?: PaginationParams): Promise<Customer[]>;
+  getCustomer(id: string, userId: string): Promise<Customer | undefined>;
   createCustomer(c: InsertCustomer): Promise<Customer>;
   updateCustomer(
     id: string,
+    userId: string,
     updates: Partial<InsertCustomer>,
   ): Promise<Customer | undefined>;
-  deleteCustomer(id: string): Promise<void>;
+  deleteCustomer(id: string, userId: string): Promise<void>;
 
-  getBookings(userId: string): Promise<Booking[]>;
-  getBooking(id: string): Promise<Booking | undefined>;
+  getBookings(userId: string, pagination?: PaginationParams): Promise<Booking[]>;
+  getBooking(id: string, userId: string): Promise<Booking | undefined>;
   createBooking(b: InsertBooking): Promise<Booking>;
   updateBooking(
     id: string,
+    userId: string,
     updates: Partial<InsertBooking>,
   ): Promise<Booking | undefined>;
-  deleteBooking(id: string): Promise<void>;
+  deleteBooking(id: string, userId: string): Promise<void>;
 
-  getMaintenanceRecords(userId: string): Promise<MaintenanceRecord[]>;
+  getMaintenanceRecords(userId: string, pagination?: PaginationParams): Promise<MaintenanceRecord[]>;
   createMaintenance(m: InsertMaintenance): Promise<MaintenanceRecord>;
   updateMaintenance(
     id: string,
+    userId: string,
     updates: Partial<InsertMaintenance>,
   ): Promise<MaintenanceRecord | undefined>;
+  deleteMaintenance(id: string, userId: string): Promise<void>;
 
-  getTasks(userId: string): Promise<Task[]>;
+  getTasks(userId: string, pagination?: PaginationParams): Promise<Task[]>;
   createTask(t: InsertTask): Promise<Task>;
   updateTask(
     id: string,
+    userId: string,
     updates: Partial<InsertTask>,
   ): Promise<Task | undefined>;
-  deleteTask(id: string): Promise<void>;
+  deleteTask(id: string, userId: string): Promise<void>;
 
-  getNotes(userId: string): Promise<Note[]>;
+  getNotes(userId: string, pagination?: PaginationParams): Promise<Note[]>;
   createNote(n: InsertNote): Promise<Note>;
   updateNote(
     id: string,
+    userId: string,
     updates: Partial<InsertNote>,
   ): Promise<Note | undefined>;
-  deleteNote(id: string): Promise<void>;
+  deleteNote(id: string, userId: string): Promise<void>;
 
   getActions(userId: string, limit?: number): Promise<ActionHistory[]>;
   createAction(a: InsertAction): Promise<ActionHistory>;
-  updateActionStatus(id: string, status: string): Promise<void>;
+  updateActionStatus(id: string, userId: string, status: string): Promise<void>;
 
   getMemory(userId: string): Promise<AssistantMemoryRecord[]>;
   setMemory(
@@ -152,23 +177,25 @@ export interface IStorage {
     category?: string,
   ): Promise<AssistantMemoryRecord>;
 
-  getNotifications(userId: string): Promise<Notification[]>;
+  getNotifications(userId: string, pagination?: PaginationParams): Promise<Notification[]>;
   createNotification(n: InsertNotification): Promise<Notification>;
-  markNotificationRead(id: string): Promise<void>;
+  markNotificationRead(id: string, userId: string): Promise<void>;
   markAllNotificationsRead(userId: string): Promise<void>;
 
-  getAutomations(userId: string): Promise<Automation[]>;
+  getAutomations(userId: string, pagination?: PaginationParams): Promise<Automation[]>;
   createAutomation(a: InsertAutomation): Promise<Automation>;
   updateAutomation(
     id: string,
+    userId: string,
     updates: Partial<InsertAutomation>,
   ): Promise<Automation | undefined>;
 
-  getInspections(userId: string): Promise<Inspection[]>;
-  getInspection(id: string): Promise<Inspection | undefined>;
+  getInspections(userId: string, pagination?: PaginationParams): Promise<Inspection[]>;
+  getInspection(id: string, userId: string): Promise<Inspection | undefined>;
   createInspection(i: InsertInspection): Promise<Inspection>;
   updateInspection(
     id: string,
+    userId: string,
     updates: Partial<InsertInspection>,
   ): Promise<Inspection | undefined>;
 
@@ -228,16 +255,16 @@ export class DatabaseStorage implements IStorage {
     const [m] = await db.insert(modules).values(module).returning();
     return m;
   }
-  async updateModule(id: string, updates: Partial<InsertModule>) {
+  async updateModule(id: string, userId: string, updates: Partial<InsertModule>) {
     const [m] = await db
       .update(modules)
       .set(updates)
-      .where(eq(modules.id, id))
+      .where(and(eq(modules.id, id), eq(modules.userId, userId)))
       .returning();
     return m;
   }
-  async deleteModule(id: string) {
-    await db.delete(modules).where(eq(modules.id, id));
+  async deleteModule(id: string, userId: string) {
+    await db.delete(modules).where(and(eq(modules.id, id), eq(modules.userId, userId)));
   }
   async deleteAllModulesByUser(userId: string) {
     await db.delete(modules).where(eq(modules.userId, userId));
@@ -256,23 +283,30 @@ export class DatabaseStorage implements IStorage {
     return m;
   }
 
-  async getVehicles(userId: string) {
-    const res = await db
+  async getVehicles(userId: string, pagination?: PaginationParams) {
+    let query = db
       .select()
       .from(vehicles)
       .where(eq(vehicles.userId, userId));
+    if (pagination) {
+      query = query.limit(pagination.limit).offset(pagination.offset) as typeof query;
+    }
+    const res = await query;
     const privileged = await this.isPrivileged(userId);
     if (!privileged) {
       return res.map(
-        ({ dailyRate, ...rest }) => ({ ...rest, dailyRate: null }) as any,
+        ({ dailyRate: _dr, ...rest }) => ({ ...rest, dailyRate: null as string | null }),
       );
     }
     return res;
   }
-  async getVehicle(id: string) {
-    const [v] = await db.select().from(vehicles).where(eq(vehicles.id, id));
-    if (v && !(await this.isPrivileged(v.userId))) {
-      return { ...v, dailyRate: null } as any;
+  async getVehicle(id: string, userId: string) {
+    const [v] = await db
+      .select()
+      .from(vehicles)
+      .where(and(eq(vehicles.id, id), eq(vehicles.userId, userId)));
+    if (v && !(await this.isPrivileged(userId))) {
+      return { ...v, dailyRate: null as string | null };
     }
     return v;
   }
@@ -280,60 +314,74 @@ export class DatabaseStorage implements IStorage {
     const [created] = await db.insert(vehicles).values(v).returning();
     return created;
   }
-  async updateVehicle(id: string, updates: Partial<InsertVehicle>) {
+  async updateVehicle(id: string, userId: string, updates: Partial<InsertVehicle>) {
     const [v] = await db
       .update(vehicles)
       .set(updates)
-      .where(eq(vehicles.id, id))
+      .where(and(eq(vehicles.id, id), eq(vehicles.userId, userId)))
       .returning();
     return v;
   }
-  async deleteVehicle(id: string) {
-    await db.delete(vehicles).where(eq(vehicles.id, id));
+  async deleteVehicle(id: string, userId: string) {
+    await db.delete(vehicles).where(and(eq(vehicles.id, id), eq(vehicles.userId, userId)));
   }
 
-  async getCustomers(userId: string) {
-    return db.select().from(customers).where(eq(customers.userId, userId));
+  async getCustomers(userId: string, pagination?: PaginationParams) {
+    let query = db.select().from(customers).where(eq(customers.userId, userId));
+    if (pagination) {
+      query = query.limit(pagination.limit).offset(pagination.offset) as typeof query;
+    }
+    return query;
   }
-  async getCustomer(id: string) {
-    const [c] = await db.select().from(customers).where(eq(customers.id, id));
+  async getCustomer(id: string, userId: string) {
+    const [c] = await db
+      .select()
+      .from(customers)
+      .where(and(eq(customers.id, id), eq(customers.userId, userId)));
     return c;
   }
   async createCustomer(c: InsertCustomer) {
     const [created] = await db.insert(customers).values(c).returning();
     return created;
   }
-  async updateCustomer(id: string, updates: Partial<InsertCustomer>) {
+  async updateCustomer(id: string, userId: string, updates: Partial<InsertCustomer>) {
     const [c] = await db
       .update(customers)
       .set(updates)
-      .where(eq(customers.id, id))
+      .where(and(eq(customers.id, id), eq(customers.userId, userId)))
       .returning();
     return c;
   }
-  async deleteCustomer(id: string) {
-    await db.delete(customers).where(eq(customers.id, id));
+  async deleteCustomer(id: string, userId: string) {
+    await db.delete(customers).where(and(eq(customers.id, id), eq(customers.userId, userId)));
   }
 
-  async getBookings(userId: string) {
-    const res = await db
+  async getBookings(userId: string, pagination?: PaginationParams) {
+    let query = db
       .select()
       .from(bookings)
       .where(eq(bookings.userId, userId))
       .orderBy(desc(bookings.createdAt));
+    if (pagination) {
+      query = query.limit(pagination.limit).offset(pagination.offset) as typeof query;
+    }
+    const res = await query;
     const privileged = await this.isPrivileged(userId);
     if (!privileged) {
       return res.map(
         ({ totalAmount, deposit, ...rest }) =>
-          ({ ...rest, totalAmount: null, deposit: null }) as any,
+          ({ ...rest, totalAmount: null as string | null, deposit: null as string | null }),
       );
     }
     return res;
   }
-  async getBooking(id: string) {
-    const [b] = await db.select().from(bookings).where(eq(bookings.id, id));
-    if (b && !(await this.isPrivileged(b.userId))) {
-      return { ...b, totalAmount: null, deposit: null } as any;
+  async getBooking(id: string, userId: string) {
+    const [b] = await db
+      .select()
+      .from(bookings)
+      .where(and(eq(bookings.id, id), eq(bookings.userId, userId)));
+    if (b && !(await this.isPrivileged(userId))) {
+      return { ...b, totalAmount: null as string | null, deposit: null as string | null };
     }
     return b;
   }
@@ -341,82 +389,98 @@ export class DatabaseStorage implements IStorage {
     const [created] = await db.insert(bookings).values(b).returning();
     return created;
   }
-  async updateBooking(id: string, updates: Partial<InsertBooking>) {
+  async updateBooking(id: string, userId: string, updates: Partial<InsertBooking>) {
     const [b] = await db
       .update(bookings)
       .set(updates)
-      .where(eq(bookings.id, id))
+      .where(and(eq(bookings.id, id), eq(bookings.userId, userId)))
       .returning();
     return b;
   }
-  async deleteBooking(id: string) {
-    await db.delete(bookings).where(eq(bookings.id, id));
+  async deleteBooking(id: string, userId: string) {
+    await db.delete(bookings).where(and(eq(bookings.id, id), eq(bookings.userId, userId)));
   }
 
-  async getMaintenanceRecords(userId: string) {
-    return db
+  async getMaintenanceRecords(userId: string, pagination?: PaginationParams) {
+    let query = db
       .select()
       .from(maintenanceRecords)
       .where(eq(maintenanceRecords.userId, userId))
       .orderBy(desc(maintenanceRecords.createdAt));
+    const { limit, offset } = pagination ?? { limit: DEFAULT_PAGE_LIMIT, offset: 0 };
+    query = query.limit(limit).offset(offset) as typeof query;
+    return query;
   }
   async createMaintenance(m: InsertMaintenance) {
     const [created] = await db.insert(maintenanceRecords).values(m).returning();
     return created;
   }
-  async updateMaintenance(id: string, updates: Partial<InsertMaintenance>) {
+  async updateMaintenance(id: string, userId: string, updates: Partial<InsertMaintenance>) {
     const [m] = await db
       .update(maintenanceRecords)
       .set(updates)
-      .where(eq(maintenanceRecords.id, id))
+      .where(and(eq(maintenanceRecords.id, id), eq(maintenanceRecords.userId, userId)))
       .returning();
     return m;
   }
+  async deleteMaintenance(id: string, userId: string) {
+    await db.delete(maintenanceRecords).where(
+      and(eq(maintenanceRecords.id, id), eq(maintenanceRecords.userId, userId)),
+    );
+  }
 
-  async getTasks(userId: string) {
-    return db
+  async getTasks(userId: string, pagination?: PaginationParams) {
+    let query = db
       .select()
       .from(tasks)
       .where(eq(tasks.userId, userId))
       .orderBy(desc(tasks.createdAt));
+    if (pagination) {
+      query = query.limit(pagination.limit).offset(pagination.offset) as typeof query;
+    }
+    return query;
   }
   async createTask(t: InsertTask) {
     const [created] = await db.insert(tasks).values(t).returning();
     return created;
   }
-  async updateTask(id: string, updates: Partial<InsertTask>) {
+  async updateTask(id: string, userId: string, updates: Partial<InsertTask>) {
     const [t] = await db
       .update(tasks)
       .set(updates)
-      .where(eq(tasks.id, id))
+      .where(and(eq(tasks.id, id), eq(tasks.userId, userId)))
       .returning();
     return t;
   }
-  async deleteTask(id: string) {
-    await db.delete(tasks).where(eq(tasks.id, id));
+  async deleteTask(id: string, userId: string) {
+    await db.delete(tasks).where(and(eq(tasks.id, id), eq(tasks.userId, userId)));
   }
 
-  async getNotes(userId: string) {
-    return db
+  async getNotes(userId: string, pagination?: PaginationParams) {
+    let query = db
       .select()
       .from(notes)
       .where(eq(notes.userId, userId))
       .orderBy(desc(notes.createdAt));
+    if (pagination) {
+      query = query.limit(pagination.limit).offset(pagination.offset) as typeof query;
+    }
+    return query;
   }
   async createNote(n: InsertNote) {
     const [created] = await db.insert(notes).values(n).returning();
     return created;
   }
-  async updateNote(id: string, updates: Partial<InsertNote>) {
+  async updateNote(id: string, userId: string, updates: Partial<InsertNote>) {
     const [n] = await db
       .update(notes)
       .set(updates)
-      .where(eq(notes.id, id))
+      .where(and(eq(notes.id, id), eq(notes.userId, userId)))
       .returning();
     return n;
   }
-  async deleteNote(id: string) {
-    await db.delete(notes).where(eq(notes.id, id));
+  async deleteNote(id: string, userId: string) {
+    await db.delete(notes).where(and(eq(notes.id, id), eq(notes.userId, userId)));
   }
 
   async getActions(userId: string, limit = 50) {
@@ -431,11 +495,11 @@ export class DatabaseStorage implements IStorage {
     const [created] = await db.insert(actionHistory).values(a).returning();
     return created;
   }
-  async updateActionStatus(id: string, status: string) {
+  async updateActionStatus(id: string, userId: string, status: string) {
     await db
       .update(actionHistory)
       .set({ status })
-      .where(eq(actionHistory.id, id));
+      .where(and(eq(actionHistory.id, id), eq(actionHistory.userId, userId)));
   }
 
   async getMemory(userId: string) {
@@ -471,22 +535,25 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async getNotifications(userId: string) {
-    return db
+  async getNotifications(userId: string, pagination?: PaginationParams) {
+    let query = db
       .select()
       .from(notifications)
       .where(eq(notifications.userId, userId))
       .orderBy(desc(notifications.createdAt));
+    const { limit, offset } = pagination ?? { limit: DEFAULT_PAGE_LIMIT, offset: 0 };
+    query = query.limit(limit).offset(offset) as typeof query;
+    return query;
   }
   async createNotification(n: InsertNotification) {
     const [created] = await db.insert(notifications).values(n).returning();
     return created;
   }
-  async markNotificationRead(id: string) {
+  async markNotificationRead(id: string, userId: string) {
     await db
       .update(notifications)
       .set({ read: true, updatedAt: new Date() })
-      .where(eq(notifications.id, id));
+      .where(and(eq(notifications.id, id), eq(notifications.userId, userId)));
   }
   async markAllNotificationsRead(userId: string) {
     await db
@@ -495,45 +562,51 @@ export class DatabaseStorage implements IStorage {
       .where(eq(notifications.userId, userId));
   }
 
-  async getAutomations(userId: string) {
-    return db.select().from(automations).where(eq(automations.userId, userId));
+  async getAutomations(userId: string, pagination?: PaginationParams) {
+    let query = db.select().from(automations).where(eq(automations.userId, userId));
+    const { limit, offset } = pagination ?? { limit: DEFAULT_PAGE_LIMIT, offset: 0 };
+    query = query.limit(limit).offset(offset) as typeof query;
+    return query;
   }
   async createAutomation(a: InsertAutomation) {
     const [created] = await db.insert(automations).values(a).returning();
     return created;
   }
-  async updateAutomation(id: string, updates: Partial<InsertAutomation>) {
+  async updateAutomation(id: string, userId: string, updates: Partial<InsertAutomation>) {
     const [u] = await db
       .update(automations)
       .set(updates)
-      .where(eq(automations.id, id))
+      .where(and(eq(automations.id, id), eq(automations.userId, userId)))
       .returning();
     return u;
   }
 
-  async getInspections(userId: string) {
-    return db
+  async getInspections(userId: string, pagination?: PaginationParams) {
+    let query = db
       .select()
       .from(inspections)
       .where(eq(inspections.userId, userId))
       .orderBy(desc(inspections.createdAt));
+    const { limit, offset } = pagination ?? { limit: DEFAULT_PAGE_LIMIT, offset: 0 };
+    query = query.limit(limit).offset(offset) as typeof query;
+    return query;
   }
-  async getInspection(id: string) {
+  async getInspection(id: string, userId: string) {
     const [i] = await db
       .select()
       .from(inspections)
-      .where(eq(inspections.id, id));
+      .where(and(eq(inspections.id, id), eq(inspections.userId, userId)));
     return i;
   }
   async createInspection(i: InsertInspection) {
     const [created] = await db.insert(inspections).values(i).returning();
     return created;
   }
-  async updateInspection(id: string, updates: Partial<InsertInspection>) {
+  async updateInspection(id: string, userId: string, updates: Partial<InsertInspection>) {
     const [u] = await db
       .update(inspections)
       .set(updates)
-      .where(eq(inspections.id, id))
+      .where(and(eq(inspections.id, id), eq(inspections.userId, userId)))
       .returning();
     return u;
   }

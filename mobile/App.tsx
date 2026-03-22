@@ -7,6 +7,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { AppNavigator, navigationTheme } from "./src/app/navigation";
 import { GlobalOverlays } from "./src/components/overlays";
+import OfflineBanner from "./src/components/OfflineBanner";
 import { theme } from "./src/app/theme";
 import { useAppStore } from "./src/state/store";
 
@@ -27,6 +28,7 @@ function AppRoot() {
       <SafeAreaProvider>
         <NavigationContainer theme={navigationTheme}>
           <StatusBar style="light" />
+          <OfflineBanner />
           <AppNavigator />
           <GlobalOverlays />
         </NavigationContainer>

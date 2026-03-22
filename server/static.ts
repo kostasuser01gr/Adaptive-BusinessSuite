@@ -22,7 +22,13 @@ export function serveStatic(app: Express) {
     );
   }
 
-  app.use(express.static(distPath));
+  app.use(
+    express.static(distPath, {
+      maxAge: "1y",
+      immutable: true,
+      index: false,
+    }),
+  );
 
   app.get("/{*path}", spaFallbackLimiter, (_req, res) => {
     res.sendFile(path.resolve(distPath, "index.html"));

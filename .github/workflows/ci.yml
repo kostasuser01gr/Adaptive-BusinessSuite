@@ -98,6 +98,8 @@ jobs:
       DATABASE_SSL_MODE: disable
       SESSION_SECRET: e2e-ci-only-not-production-session-secret-00000002
       SESSION_COOKIE_NAME: abs.sid
+      SESSION_COOKIE_SECURE: "false"
+      RATE_LIMIT_MAX: "10000"
       PORT: "5000"
     steps:
       - name: Checkout

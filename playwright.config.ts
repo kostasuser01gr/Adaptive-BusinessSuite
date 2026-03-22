@@ -39,6 +39,7 @@ export default defineConfig({
       SESSION_COOKIE_NAME: process.env.SESSION_COOKIE_NAME ?? "abs.sid",
       SESSION_COOKIE_SAME_SITE: "lax",
       SESSION_COOKIE_SECURE: "false",
+      RATE_LIMIT_MAX: "10000",
       AI_PROVIDER: "none",
     },
   },

@@ -60,7 +60,10 @@ export type HistoryType =
 export interface UserProfile {
   id: string;
   username: string;
-  password: string;
+  /** SHA-256 hash of password + salt */
+  passwordHash: string;
+  /** Random salt for password hashing */
+  passwordSalt: string;
   displayName: string;
   onboardingComplete: boolean;
   createdAt: string;

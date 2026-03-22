@@ -189,12 +189,13 @@ export default function Sidebar() {
         <button
           className="lg:hidden ml-auto p-1 text-muted-foreground"
           onClick={() => setMobileOpen(false)}
+          aria-label="Close navigation menu"
         >
           <X className="h-5 w-5" />
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto py-4 px-3 flex flex-col gap-0.5">
+      <nav aria-label="Primary" className="flex-1 overflow-y-auto py-4 px-3 flex flex-col gap-0.5">
         {pinnedRoutes.length > 0 ? (
           <div className="mb-4">
             <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70">
@@ -400,7 +401,7 @@ export default function Sidebar() {
             })}
           </div>
         </div>
-      </div>
+      </nav>
 
       <div className="p-3 border-t border-white/5 space-y-2 shrink-0">
         <div className="relative">
@@ -455,6 +456,7 @@ export default function Sidebar() {
             size="icon"
             className="h-7 w-7 hover:text-destructive"
             onClick={() => logout()}
+            aria-label="Log out"
             data-testid="button-logout"
           >
             <LogOut className="h-3.5 w-3.5" />
@@ -469,6 +471,7 @@ export default function Sidebar() {
       <button
         className="lg:hidden fixed top-3 left-3 z-50 p-2 glass rounded-lg"
         onClick={() => setMobileOpen(true)}
+        aria-label="Open navigation menu"
         data-testid="button-mobile-menu"
       >
         <Menu className="h-4 w-4" />
@@ -480,6 +483,7 @@ export default function Sidebar() {
         />
       )}
       <aside
+        aria-label="Main navigation"
         className={`w-56 bg-background/80 backdrop-blur-xl border-r border-white/5 flex flex-col fixed lg:static inset-y-0 left-0 z-50 transition-transform duration-200 ${mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}
       >
         {sidebarContent}

@@ -1,10 +1,13 @@
-import { randomUUID } from "crypto";
 import express, { type Request, Response, NextFunction } from "express";
+import { randomUUID } from "node:crypto";
+import compression from "compression";
+import rateLimit from "express-rate-limit";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { checkDatabaseConnection, closeDatabasePool } from "./db";
 import { env, isProduction } from "./config";
+import { logger } from "./logger";
 
 const app = express();
 const httpServer = createServer(app);
@@ -151,15 +154,62 @@ app.use((req, res, next) => {
   return next();
 });
 
+// ── Security headers (CSP, HSTS, etc.) ──
+app.use((_req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader(
+    "Permissions-Policy",
+    "camera=(), microphone=(), geolocation=()",
+  );
+  if (isProduction) {
+    res.setHeader(
+      "Content-Security-Policy",
+      [
+        "default-src 'self'",
+        "script-src 'self'",
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+        "img-src 'self' data: https:",
+        "connect-src 'self' https://api.openai.com",
+        "font-src 'self' https://fonts.gstatic.com",
+        "frame-ancestors 'none'",
+      ].join("; "),
+    );
+    res.setHeader(
+      "Strict-Transport-Security",
+      "max-age=31536000; includeSubDomains",
+    );
+  }
+  next();
+});
+
+// ── Compression ──
+app.use(compression());
+
+// ── Global API rate limiting ──
+app.use(
+  "/api/",
+  rateLimit({
+    windowMs: 60_000,
+    max: Number(process.env.RATE_LIMIT_MAX) || 200,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { message: "Too many requests, please try again later." },
+  }),
+);
+
+// ── Body parsing with size limits ──
 app.use(
   express.json({
+    limit: "1mb",
     verify: (req, _res, buf) => {
       req.rawBody = buf;
     },
   }),
 );
 
-app.use(express.urlencoded({ extended: false }));
+app.use(express.urlencoded({ extended: false, limit: "1mb" }));
 
 app.get("/health", async (_req, res) => {
   const dbStatus = await checkDatabaseConnection();
@@ -177,6 +227,7 @@ app.get("/health", async (_req, res) => {
     });
 });
 
+// ── Request logging ──
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
@@ -184,13 +235,13 @@ app.use((req, res, next) => {
   res.on("finish", () => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
-      log("request completed", "http", {
+      logger.info({
         requestId: res.locals.requestId,
         method: req.method,
         path,
-        statusCode: res.statusCode,
+        status: res.statusCode,
         durationMs: duration,
-      });
+      }, `${req.method} ${path} ${res.statusCode}`);
     }
   });
 
@@ -198,24 +249,26 @@ app.use((req, res, next) => {
 });
 
 async function shutdown(signal: string) {
-  log("received shutdown signal", "shutdown", { signal });
+  logger.info({ signal }, "received signal, closing server");
+
+  // Force exit after 10 seconds if graceful close hangs
+  const forceTimer = setTimeout(() => {
+    logger.warn("graceful shutdown timed out after 10s, forcing exit");
+    process.exit(1);
+  }, 10_000);
+  forceTimer.unref();
 
   httpServer.close(async (serverError) => {
     if (serverError) {
-      logError("http server close failed", "shutdown", {
-        signal,
-        ...formatErrorFields(serverError),
-      });
+      logger.error({ err: serverError, signal }, "HTTP server close failed");
     }
 
     try {
       await closeDatabasePool();
     } catch (dbError) {
-      logError("database pool close failed", "shutdown", {
-        signal,
-        ...formatErrorFields(dbError),
-      });
+      logger.error({ err: dbError, signal }, "database pool close failed");
     } finally {
+      clearTimeout(forceTimer);
       process.exit(serverError ? 1 : 0);
     }
   });
@@ -265,13 +318,13 @@ async function startServer() {
     const status = error.status || error.statusCode || 500;
     const message = error.message || "Internal Server Error";
 
-    logError("request failed", "http", {
+    logger.error({
+      err,
       requestId: res.locals.requestId,
       method: _req.method,
       path: _req.path,
       statusCode: status,
-      ...formatErrorFields(err),
-    });
+    }, "request failed");
 
     if (res.headersSent) {
       return next(err);
@@ -298,24 +351,16 @@ async function startServer() {
     );
   });
 
-  log("server started", "startup", {
-    host: env.HOST,
-    port: env.PORT,
-    environment: env.NODE_ENV,
-  });
+  logger.info({ host: env.HOST, port: env.PORT, env: env.NODE_ENV }, "server started");
 }
 
 startServer().catch(async (error) => {
-  logError("server failed to boot", "startup", formatErrorFields(error));
+  logger.fatal({ err: error }, "failed to boot");
 
   try {
     await closeDatabasePool();
   } catch (dbError) {
-    logError(
-      "startup cleanup failed while closing database pool",
-      "startup",
-      formatErrorFields(dbError),
-    );
+    logger.error({ err: dbError }, "failed to close database pool on startup failure");
   }
 
   process.exit(1);
