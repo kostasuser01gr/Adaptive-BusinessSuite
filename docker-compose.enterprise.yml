@@ -1,0 +1,121 @@
+version: '3.9'
+
+services:
+  # Primary Database
+  postgres-primary:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-nexus_enterprise}
+      POSTGRES_USER: ${POSTGRES_USER:-nexus_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+    volumes:
+      - postgres_primary_data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-nexus_user}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Read Replica
+  postgres-replica:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_INITDB_ARGS: "-c listen_addresses='*'"
+    depends_on:
+      postgres-primary:
+        condition: service_healthy
+    ports:
+      - "5433:5432"
+
+  # Redis Cluster
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:?set REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Elasticsearch for full-text search
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    environment:
+      - discovery.type=single-node
+      - ELASTIC_PASSWORD=${ELASTICSEARCH_PASSWORD:?set ELASTICSEARCH_PASSWORD}
+      - xpack.security.enabled=true
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    ports:
+      - "${ELASTICSEARCH_PORT:-9200}:9200"
+
+  # Weaviate for vector search
+  weaviate:
+    image: semitechnologies/weaviate:latest
+    environment:
+      QUERY_DEFAULTS_LIMIT: ${WEAVIATE_QUERY_DEFAULTS_LIMIT:-25}
+      AUTHENTICATION_APIKEY_ENABLED: 'true'
+      AUTHENTICATION_APIKEY_ALLOWED_KEYS: ${WEAVIATE_API_KEYS:?set WEAVIATE_API_KEYS}
+    volumes:
+      - weaviate_data:/var/lib/weaviate
+    ports:
+      - "${WEAVIATE_PORT:-8080}:8080"
+
+  # Ollama for local LLM
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - ollama_data:/root/.ollama
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"
+
+  # FastMCP Bridge
+  fastmcp-bridge:
+    build:
+      context: ./services/fastmcp-bridge
+      dockerfile: Dockerfile
+    ports:
+      - "${FASTMCP_BRIDGE_PORT:-8000}:8000"
+    depends_on:
+      - ollama
+
+  # API Server
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-nexus_user}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres-primary:5432/${POSTGRES_DB:-nexus_enterprise}
+      REDIS_URL: redis://:${REDIS_PASSWORD:?set REDIS_PASSWORD}@redis:6379
+      ELASTICSEARCH_NODE: ${ELASTICSEARCH_NODE:-http://elasticsearch:9200}
+      ELASTICSEARCH_PASSWORD: ${ELASTICSEARCH_PASSWORD:?set ELASTICSEARCH_PASSWORD}
+      WEAVIATE_URL: ${WEAVIATE_URL:-http://weaviate:8080}
+      WEAVIATE_API_KEYS: ${WEAVIATE_API_KEYS:?set WEAVIATE_API_KEYS}
+    ports:
+      - "${API_PORT:-5000}:5000"
+    depends_on:
+      postgres-primary:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_primary_data:
+  redis_data:
+  elasticsearch_data:
+  weaviate_data:
+  ollama_data:
