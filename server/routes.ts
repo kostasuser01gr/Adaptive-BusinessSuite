@@ -409,7 +409,8 @@ export async function registerRoutes(
     requireAuth,
     async (req: Request, res: Response) => {
       const id = getRouteParam(req, "id");
-      const mod = await storage.updateModule(id, req.session.userId!, req.body);
+      const updates = insertModuleSchema.partial().parse(req.body);
+      const mod = await storage.updateModule(id, req.session.userId!, updates);
       if (!mod) return res.status(404).json({ message: "Module not found" });
       return res.json(mod);
     },
@@ -732,7 +733,8 @@ export async function registerRoutes(
     async (req: Request, res: Response) => {
       const id = getRouteParam(req, "id");
       const userId = req.session.userId!;
-      const v = await storage.updateVehicle(id, userId, req.body);
+      const updates = insertVehicleSchema.partial().parse(req.body);
+      const v = await storage.updateVehicle(id, userId, updates);
       if (!v) return res.status(404).json({ message: "Vehicle not found" });
       emitEvent(userId, null, EventTypes.ENTITY_UPDATED, {
         entityType: "vehicle",
@@ -788,7 +790,8 @@ export async function registerRoutes(
     async (req: Request, res: Response) => {
       const id = getRouteParam(req, "id");
       const userId = req.session.userId!;
-      const c = await storage.updateCustomer(id, userId, req.body);
+      const updates = insertCustomerSchema.partial().parse(req.body);
+      const c = await storage.updateCustomer(id, userId, updates);
       if (!c) return res.status(404).json({ message: "Customer not found" });
       emitEvent(userId, null, EventTypes.ENTITY_UPDATED, {
         entityType: "customer",
@@ -822,12 +825,13 @@ export async function registerRoutes(
     requireAuth,
     async (req: Request, res: Response) => {
       const userId = req.session.userId!;
-      const b = await storage.createBooking({
+      const body = insertBookingSchema.parse({
         ...req.body,
         userId,
         startDate: toDateOrNull(req.body.startDate),
         endDate: toDateOrNull(req.body.endDate),
       });
+      const b = await storage.createBooking(body);
       if (req.body.vehicleId) {
         await storage.updateVehicle(req.body.vehicleId, userId, { status: "rented" });
       }
@@ -850,7 +854,7 @@ export async function registerRoutes(
         return res.status(404).json({ message: "Booking not found" });
       }
 
-      const updates = {
+      const updates = insertBookingSchema.partial().parse({
         ...req.body,
         ...(req.body.startDate !== undefined
           ? { startDate: toDateOrNull(req.body.startDate) }
@@ -858,7 +862,7 @@ export async function registerRoutes(
         ...(req.body.endDate !== undefined
           ? { endDate: toDateOrNull(req.body.endDate) }
           : {}),
-      };
+      });
 
       const booking = await storage.updateBooking(id, userId, updates);
       const bookingVehicleId = booking?.vehicleId ?? existing.vehicleId;
@@ -906,7 +910,7 @@ export async function registerRoutes(
         entityType: "booking",
         entityId: id,
       });
-      return res.json({ success: true });
+      return res.json({ ok: true });
     },
   );
 
@@ -935,12 +939,13 @@ export async function registerRoutes(
     async (req: Request, res: Response) => {
       const id = getRouteParam(req, "id");
       const userId = req.session.userId!;
-      const task = await storage.updateTask(id, userId, {
+      const taskUpdates = insertTaskSchema.partial().parse({
         ...req.body,
         ...(req.body.dueDate !== undefined
           ? { dueDate: toDateOrNull(req.body.dueDate) }
           : {}),
       });
+      const task = await storage.updateTask(id, userId, taskUpdates);
 
       if (!task) {
         return res.status(404).json({ message: "Task not found" });
@@ -992,7 +997,8 @@ export async function registerRoutes(
     async (req: Request, res: Response) => {
       const id = getRouteParam(req, "id");
       const userId = req.session.userId!;
-      const note = await storage.updateNote(id, userId, req.body);
+      const noteUpdates = insertNoteSchema.partial().parse(req.body);
+      const note = await storage.updateNote(id, userId, noteUpdates);
 
       if (!note) {
         return res.status(404).json({ message: "Note not found" });

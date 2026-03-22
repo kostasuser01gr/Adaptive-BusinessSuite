@@ -138,13 +138,14 @@ export interface IStorage {
   ): Promise<Booking | undefined>;
   deleteBooking(id: string, userId: string): Promise<void>;
 
-  getMaintenanceRecords(userId: string): Promise<MaintenanceRecord[]>;
+  getMaintenanceRecords(userId: string, pagination?: PaginationParams): Promise<MaintenanceRecord[]>;
   createMaintenance(m: InsertMaintenance): Promise<MaintenanceRecord>;
   updateMaintenance(
     id: string,
     userId: string,
     updates: Partial<InsertMaintenance>,
   ): Promise<MaintenanceRecord | undefined>;
+  deleteMaintenance(id: string, userId: string): Promise<void>;
 
   getTasks(userId: string, pagination?: PaginationParams): Promise<Task[]>;
   createTask(t: InsertTask): Promise<Task>;
@@ -176,12 +177,12 @@ export interface IStorage {
     category?: string,
   ): Promise<AssistantMemoryRecord>;
 
-  getNotifications(userId: string): Promise<Notification[]>;
+  getNotifications(userId: string, pagination?: PaginationParams): Promise<Notification[]>;
   createNotification(n: InsertNotification): Promise<Notification>;
   markNotificationRead(id: string, userId: string): Promise<void>;
   markAllNotificationsRead(userId: string): Promise<void>;
 
-  getAutomations(userId: string): Promise<Automation[]>;
+  getAutomations(userId: string, pagination?: PaginationParams): Promise<Automation[]>;
   createAutomation(a: InsertAutomation): Promise<Automation>;
   updateAutomation(
     id: string,
@@ -189,7 +190,7 @@ export interface IStorage {
     updates: Partial<InsertAutomation>,
   ): Promise<Automation | undefined>;
 
-  getInspections(userId: string): Promise<Inspection[]>;
+  getInspections(userId: string, pagination?: PaginationParams): Promise<Inspection[]>;
   getInspection(id: string, userId: string): Promise<Inspection | undefined>;
   createInspection(i: InsertInspection): Promise<Inspection>;
   updateInspection(
@@ -400,12 +401,15 @@ export class DatabaseStorage implements IStorage {
     await db.delete(bookings).where(and(eq(bookings.id, id), eq(bookings.userId, userId)));
   }
 
-  async getMaintenanceRecords(userId: string) {
-    return db
+  async getMaintenanceRecords(userId: string, pagination?: PaginationParams) {
+    let query = db
       .select()
       .from(maintenanceRecords)
       .where(eq(maintenanceRecords.userId, userId))
       .orderBy(desc(maintenanceRecords.createdAt));
+    const { limit, offset } = pagination ?? { limit: DEFAULT_PAGE_LIMIT, offset: 0 };
+    query = query.limit(limit).offset(offset) as typeof query;
+    return query;
   }
   async createMaintenance(m: InsertMaintenance) {
     const [created] = await db.insert(maintenanceRecords).values(m).returning();
@@ -418,6 +422,11 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(maintenanceRecords.id, id), eq(maintenanceRecords.userId, userId)))
       .returning();
     return m;
+  }
+  async deleteMaintenance(id: string, userId: string) {
+    await db.delete(maintenanceRecords).where(
+      and(eq(maintenanceRecords.id, id), eq(maintenanceRecords.userId, userId)),
+    );
   }
 
   async getTasks(userId: string, pagination?: PaginationParams) {
@@ -526,12 +535,15 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async getNotifications(userId: string) {
-    return db
+  async getNotifications(userId: string, pagination?: PaginationParams) {
+    let query = db
       .select()
       .from(notifications)
       .where(eq(notifications.userId, userId))
       .orderBy(desc(notifications.createdAt));
+    const { limit, offset } = pagination ?? { limit: DEFAULT_PAGE_LIMIT, offset: 0 };
+    query = query.limit(limit).offset(offset) as typeof query;
+    return query;
   }
   async createNotification(n: InsertNotification) {
     const [created] = await db.insert(notifications).values(n).returning();
@@ -550,8 +562,11 @@ export class DatabaseStorage implements IStorage {
       .where(eq(notifications.userId, userId));
   }
 
-  async getAutomations(userId: string) {
-    return db.select().from(automations).where(eq(automations.userId, userId));
+  async getAutomations(userId: string, pagination?: PaginationParams) {
+    let query = db.select().from(automations).where(eq(automations.userId, userId));
+    const { limit, offset } = pagination ?? { limit: DEFAULT_PAGE_LIMIT, offset: 0 };
+    query = query.limit(limit).offset(offset) as typeof query;
+    return query;
   }
   async createAutomation(a: InsertAutomation) {
     const [created] = await db.insert(automations).values(a).returning();
@@ -566,12 +581,15 @@ export class DatabaseStorage implements IStorage {
     return u;
   }
 
-  async getInspections(userId: string) {
-    return db
+  async getInspections(userId: string, pagination?: PaginationParams) {
+    let query = db
       .select()
       .from(inspections)
       .where(eq(inspections.userId, userId))
       .orderBy(desc(inspections.createdAt));
+    const { limit, offset } = pagination ?? { limit: DEFAULT_PAGE_LIMIT, offset: 0 };
+    query = query.limit(limit).offset(offset) as typeof query;
+    return query;
   }
   async getInspection(id: string, userId: string) {
     const [i] = await db
