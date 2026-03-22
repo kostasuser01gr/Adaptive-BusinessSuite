@@ -23,6 +23,7 @@ const MaintenancePage = lazy(() => import("./pages/maintenance/MaintenancePage")
 const SettingsPage = lazy(() => import("./pages/settings/SettingsPage"));
 const FinancialPage = lazy(() => import("./pages/financial/FinancialPage"));
 const NexusUltraPage = lazy(() => import("./pages/nexus/NexusUltraPage"));
+const TodayPage = lazy(() => import("./pages/today/TodayPage"));
 
 function PageSkeleton() {
   return (
@@ -61,6 +62,9 @@ function Router() {
         </Route>
         <Route path="/">
           <ProtectedRoute component={DashboardPage} />
+        </Route>
+        <Route path="/today">
+          <ProtectedRoute component={TodayPage} />
         </Route>
         <Route path="/fleet">
           <ProtectedRoute component={FleetPage} />

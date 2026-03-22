@@ -179,4 +179,48 @@ test.describe("Shell experience", () => {
       0,
     );
   });
+
+  test("persists pinned and recent surfaces in the workspace shell", async ({
+    page,
+  }) => {
+    await registerAndLogin(page);
+
+    await page.goto("/tasks");
+    await expect(page.getByTestId("text-tasks-title")).toBeVisible();
+    await page.getByTestId("button-favorite-route-tasks").click();
+
+    await page.goto("/notes");
+    await expect(page.getByTestId("text-notes-title")).toBeVisible();
+
+    await expect(page.getByTestId("shell-pinned-section")).toBeVisible();
+    await expect(page.getByTestId("shell-pinned-item-tasks")).toBeVisible();
+    await expect(page.getByTestId("shell-recent-section")).toBeVisible();
+    await expect(page.getByTestId("shell-recent-item-notes")).toBeVisible();
+
+    await page.getByTestId("button-command-bar").click();
+    await expect(page.getByTestId("command-bar")).toBeVisible();
+    await expect(page.getByTestId("command-bar")).toContainText("Pinned");
+    await expect(page.getByTestId("command-bar")).toContainText("Tasks");
+  });
+
+  test("shows shell control signals and quick actions", async ({ page }) => {
+    await registerAndLogin(page);
+
+    const taskResponse = await postWithCsrf(page.request, "/api/tasks", {
+      title: "Shell control task",
+      status: "todo",
+      priority: "high",
+    });
+    expect(taskResponse.ok()).toBeTruthy();
+
+    await page.goto("/");
+
+    await expect(page.getByTestId("shell-control-card")).toBeVisible();
+    await expect(page.getByTestId("shell-posture-badge")).toBeVisible();
+    await expect(page.getByTestId("shell-signal-tasks")).toContainText("1");
+    await expect(page.getByTestId("shell-quick-actions")).toBeVisible();
+
+    await page.getByTestId("button-shell-quick-tasks").click();
+    await expect(page.getByTestId("text-tasks-title")).toBeVisible();
+  });
 });

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useAppState } from "@/lib/store";
 import { useLocation } from "wouter";
 import {
@@ -16,7 +16,10 @@ import {
   ArrowRight,
   TrendingUp,
   ShieldCheck,
+  Clock3,
+  Pin,
 } from "lucide-react";
+import { buildShellRouteCatalog, useShellMemory } from "@/lib/shell-memory";
 
 interface CommandItem {
   id: string;
@@ -34,10 +37,44 @@ export default function CommandBar() {
     processCommand,
     toggleChat,
     activeOntology,
+    user,
   } = useAppState();
   const [query, setQuery] = useState("");
   const [, setLocation] = useLocation();
   const inputRef = useRef<HTMLInputElement>(null);
+  const shellRoutes = useMemo(
+    () => buildShellRouteCatalog(activeOntology),
+    [activeOntology],
+  );
+  const routeMap = new Map(shellRoutes.map((route) => [route.path, route]));
+  const { favorites, recents } = useShellMemory(user?.id, shellRoutes);
+
+  function getRouteIcon(icon: string) {
+    switch (icon) {
+      case "Sparkles":
+        return <Sparkles className="h-4 w-4" />;
+      case "CarFront":
+        return <Car className="h-4 w-4" />;
+      case "Users":
+        return <Users className="h-4 w-4" />;
+      case "Calendar":
+        return <Calendar className="h-4 w-4" />;
+      case "Wrench":
+        return <Wrench className="h-4 w-4" />;
+      case "CheckSquare":
+        return <CheckSquare className="h-4 w-4" />;
+      case "FileText":
+        return <FileText className="h-4 w-4" />;
+      case "Wallet":
+        return <TrendingUp className="h-4 w-4" />;
+      case "Shield":
+        return <ShieldCheck className="h-4 w-4" />;
+      case "Settings":
+        return <Settings className="h-4 w-4" />;
+      default:
+        return <LayoutDashboard className="h-4 w-4" />;
+    }
+  }
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -58,7 +95,52 @@ export default function CommandBar() {
     }
   }, [isCommandBarOpen]);
 
+  const pinnedCommands: CommandItem[] = favorites
+    .map((path) => routeMap.get(path))
+    .filter((route): route is NonNullable<typeof route> => Boolean(route))
+    .map((route) => ({
+      id: `pinned-${route.path}`,
+      label: route.label,
+      description: route.description,
+      icon: <Pin className="h-4 w-4" />,
+      action: () => {
+        setLocation(route.path);
+        setCommandBarOpen(false);
+      },
+      category: "Pinned",
+    }));
+
+  const recentCommands: CommandItem[] = recents
+    .filter((path) => !favorites.includes(path))
+    .map((path) => routeMap.get(path))
+    .filter((route): route is NonNullable<typeof route> => Boolean(route))
+    .slice(0, 4)
+    .map((route) => ({
+      id: `recent-${route.path}`,
+      label: route.label,
+      description: route.description,
+      icon: <Clock3 className="h-4 w-4" />,
+      action: () => {
+        setLocation(route.path);
+        setCommandBarOpen(false);
+      },
+      category: "Recent",
+    }));
+
   const commands: CommandItem[] = [
+    ...pinnedCommands,
+    ...recentCommands,
+    {
+      id: "today",
+      label: "Today",
+      description: "Open the live operator command center",
+      icon: <Sparkles className="h-4 w-4" />,
+      action: () => {
+        setLocation("/today");
+        setCommandBarOpen(false);
+      },
+      category: "Navigation",
+    },
     {
       id: "dashboard",
       label: "Dashboard",
@@ -74,7 +156,7 @@ export default function CommandBar() {
       id: "fleet",
       label: activeOntology.resourceName + "s",
       description: `Manage ${activeOntology.resourceName.toLowerCase()}s`,
-      icon: <Car className="h-4 w-4" />,
+      icon: getRouteIcon("CarFront"),
       action: () => {
         setLocation("/fleet");
         setCommandBarOpen(false);
@@ -85,7 +167,7 @@ export default function CommandBar() {
       id: "bookings",
       label: activeOntology.eventName + "s",
       description: `View ${activeOntology.eventName.toLowerCase()}s`,
-      icon: <Calendar className="h-4 w-4" />,
+      icon: getRouteIcon("Calendar"),
       action: () => {
         setLocation("/bookings");
         setCommandBarOpen(false);
@@ -96,7 +178,7 @@ export default function CommandBar() {
       id: "tasks",
       label: "Tasks",
       description: "Task management",
-      icon: <CheckSquare className="h-4 w-4" />,
+      icon: getRouteIcon("CheckSquare"),
       action: () => {
         setLocation("/tasks");
         setCommandBarOpen(false);
@@ -107,7 +189,7 @@ export default function CommandBar() {
       id: "settings",
       label: "Settings",
       description: "App & model settings",
-      icon: <Settings className="h-4 w-4" />,
+      icon: getRouteIcon("Settings"),
       action: () => {
         setLocation("/settings");
         setCommandBarOpen(false);

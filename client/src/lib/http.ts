@@ -1,4 +1,4 @@
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "")
+const API_BASE_URL = (import.meta.env?.VITE_API_BASE_URL ?? "")
   .trim()
   .replace(/\/+$/, "");
 
@@ -47,13 +47,21 @@ export async function fetchApi(
 
       // retryable — retry with exponential backoff + jitter
       if (attempt < MAX_RETRIES) {
-        const jitter = Math.random() * 0.5 + 0.75; // 0.75–1.25x
+        const jitter = Math.random() * 0.5 + 0.75; // 0.75-1.25x
         await sleep(BASE_DELAY_MS * 2 ** attempt * jitter);
         continue;
       }
 
       return response;
     } catch (error) {
+      // Propagate AbortError immediately — don't retry user/signal cancellations
+      if (
+        (error instanceof DOMException && error.name === "AbortError") ||
+        (error instanceof Error && error.name === "AbortError")
+      ) {
+        throw error;
+      }
+
       lastError = error;
 
       if (attempt < MAX_RETRIES) {

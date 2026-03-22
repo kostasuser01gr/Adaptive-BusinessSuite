@@ -75,6 +75,8 @@ For the full repository validation pass, including the mobile workspace:
 npm run validate
 ```
 
+Operational recovery guides live in [docs/runbooks/startup-and-db-recovery.md](docs/runbooks/startup-and-db-recovery.md) and [docs/runbooks/ci-validation-recovery.md](docs/runbooks/ci-validation-recovery.md).
+
 ## Deployment
 
 ### Railway backend
