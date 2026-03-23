@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useAppState } from "@/lib/store";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { AnimatedMount } from "@/components/animation/AnimatedMount";
 import { Button } from "@/components/ui/button";
 import {
   Settings,
@@ -11,7 +12,11 @@ import {
   History,
   Save,
   CheckCircle2,
+  Palette,
 } from "lucide-react";
+import ApiKeysPanel from "./ApiKeysPanel";
+import SessionsPanel from "./SessionsPanel";
+import ThemePicker from "@/components/forms/ThemePicker";
 
 export default function SettingsPage() {
   const { user, mode, setMode } = useAppState();
@@ -49,7 +54,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto space-y-8">
+    <AnimatedMount className="max-w-3xl mx-auto space-y-8">
       <div>
         <h1
           className="text-xl font-heading font-bold mb-1"
@@ -90,6 +95,17 @@ export default function SettingsPage() {
             </span>
           </div>
         </div>
+      </section>
+
+      <section className="bg-card/40 border border-white/[0.04] rounded-xl p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <Palette className="h-4 w-4 text-muted-foreground" />
+          <h2 className="text-sm font-heading font-semibold">Appearance</h2>
+        </div>
+        <p className="text-xs text-muted-foreground mb-4">
+          Choose a color theme for the interface.
+        </p>
+        <ThemePicker />
       </section>
 
       <section className="bg-card/40 border border-white/[0.04] rounded-xl p-5">
@@ -189,6 +205,9 @@ export default function SettingsPage() {
         )}
       </section>
 
+      <ApiKeysPanel />
+      <SessionsPanel />
+
       {actions && actions.length > 0 && (
         <section className="bg-card/40 border border-white/[0.04] rounded-xl p-5">
           <div className="flex items-center gap-2 mb-4">
@@ -221,6 +240,6 @@ export default function SettingsPage() {
           </div>
         </section>
       )}
-    </div>
+    </AnimatedMount>
   );
 }

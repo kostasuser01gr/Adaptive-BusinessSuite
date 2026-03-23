@@ -29,6 +29,7 @@ export const ontologies: Record<string, Ontology> = {
       { icon: "CheckSquare", label: "Tasks", path: "/tasks", always: true },
       { icon: "FileText", label: "Notes", path: "/notes", always: true },
       { icon: "Wallet", label: "Financial", path: "/financial" },
+      { icon: "BarChart3", label: "Analytics", path: "/analytics" },
       {
         icon: "Shield",
         label: "NEXUS ULTRA",
@@ -80,6 +81,7 @@ export const ontologies: Record<string, Ontology> = {
         always: true,
       },
       { icon: "Wallet", label: "Invoicing", path: "/financial" },
+      { icon: "BarChart3", label: "Analytics", path: "/analytics" },
       {
         icon: "Shield",
         label: "NEXUS ULTRA",

@@ -21,11 +21,18 @@ const rawEnvSchema = z
     SESSION_COOKIE_DOMAIN: z.string().min(1).optional(),
     SESSION_TTL_HOURS: z.coerce.number().int().positive().default(24 * 30),
     CORS_ALLOWED_ORIGINS: z.string().optional(),
-    AI_PROVIDER: z.enum(["none", "openai"]).default("none"),
+    AI_PROVIDER: z.enum(["none", "openai", "claude"]).default("none"),
     OPENAI_API_KEY: z.string().optional(),
     OPENAI_MODEL: z.string().default("gpt-4o-mini"),
     OPENAI_BASE_URL: z.string().url().optional(),
+    ANTHROPIC_API_KEY: z.string().optional(),
+    ANTHROPIC_MODEL: z.string().default("claude-sonnet-4-20250514"),
     LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
+    SMTP_HOST: z.string().optional(),
+    SMTP_PORT: z.string().optional(),
+    SMTP_USER: z.string().optional(),
+    SMTP_PASSWORD: z.string().optional(),
+    EMAIL_FROM: z.string().optional(),
   })
   .superRefine((value, ctx) => {
     if (value.NODE_ENV !== "test" && !value.DATABASE_URL) {
@@ -52,6 +59,14 @@ const rawEnvSchema = z
         code: z.ZodIssueCode.custom,
         path: ["OPENAI_API_KEY"],
         message: "OPENAI_API_KEY is required when AI_PROVIDER=openai.",
+      });
+    }
+
+    if (value.AI_PROVIDER === "claude" && !value.ANTHROPIC_API_KEY) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["ANTHROPIC_API_KEY"],
+        message: "ANTHROPIC_API_KEY is required when AI_PROVIDER=claude.",
       });
     }
 

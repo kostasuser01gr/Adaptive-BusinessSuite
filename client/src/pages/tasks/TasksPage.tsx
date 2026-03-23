@@ -1,8 +1,13 @@
 import React, { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { AnimatedMount } from "@/components/animation/AnimatedMount";
 import { Button } from "@/components/ui/button";
-import { Plus, CheckCircle2, Circle, Trash2 } from "lucide-react";
+import { KanbanBoard } from "@/components/kanban/KanbanBoard";
+import type { Task } from "@/components/kanban/use-kanban";
+import { Plus, CheckCircle2, Circle, Trash2, List, Columns3 } from "lucide-react";
+
+type ViewMode = "list" | "kanban";
 
 export default function TasksPage() {
   const qc = useQueryClient();
@@ -12,6 +17,7 @@ export default function TasksPage() {
   });
   const [newTitle, setNewTitle] = useState("");
   const [priority, setPriority] = useState("medium");
+  const [view, setView] = useState<ViewMode>("list");
 
   const addTask = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,6 +71,24 @@ export default function TasksPage() {
     }
   };
 
+  const handleStatusChange = async (taskId: string, newStatus: string) => {
+    const previousTasks = qc.getQueryData(["/api/tasks"]);
+    qc.setQueryData(["/api/tasks"], (current: any[] = []) =>
+      current.map((task) =>
+        task.id === taskId ? { ...task, status: newStatus } : task,
+      ),
+    );
+
+    try {
+      await api.tasks.update(taskId, { status: newStatus });
+      await qc.invalidateQueries({ queryKey: ["/api/tasks"] });
+      await qc.invalidateQueries({ queryKey: ["/api/stats"] });
+    } catch (error) {
+      qc.setQueryData(["/api/tasks"], previousTasks);
+      throw error;
+    }
+  };
+
   const todoTasks = (tasks || []).filter((t: any) => t.status !== "done");
   const doneTasks = (tasks || []).filter((t: any) => t.status === "done");
   const priorityColors: Record<string, string> = {
@@ -74,13 +98,42 @@ export default function TasksPage() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto">
-      <h1
-        className="text-xl font-heading font-bold mb-6"
-        data-testid="text-tasks-title"
-      >
-        Tasks
-      </h1>
+    <AnimatedMount className={view === "kanban" ? "" : "max-w-3xl mx-auto"}>
+      <div className="flex items-center justify-between mb-6">
+        <h1
+          className="text-xl font-heading font-bold"
+          data-testid="text-tasks-title"
+        >
+          Tasks
+        </h1>
+
+        <div className="flex items-center gap-1 rounded-lg border border-white/[0.06] bg-card/40 p-0.5">
+          <button
+            onClick={() => setView("list")}
+            className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] font-medium transition-colors ${
+              view === "list"
+                ? "bg-primary/15 text-primary"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+            aria-label="List view"
+          >
+            <List className="h-3.5 w-3.5" />
+            List
+          </button>
+          <button
+            onClick={() => setView("kanban")}
+            className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] font-medium transition-colors ${
+              view === "kanban"
+                ? "bg-primary/15 text-primary"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+            aria-label="Kanban view"
+          >
+            <Columns3 className="h-3.5 w-3.5" />
+            Kanban
+          </button>
+        </div>
+      </div>
 
       <form onSubmit={addTask} className="flex gap-2 mb-6">
         <input
@@ -111,64 +164,36 @@ export default function TasksPage() {
         </Button>
       </form>
 
-      <div className="space-y-1.5 mb-8">
-        {todoTasks.map((t: any) => (
-          <div
-            key={t.id}
-            className="bg-card/40 border border-white/[0.04] rounded-xl px-4 py-3 flex items-center gap-3 group hover:border-white/[0.08] transition-colors"
-            data-testid={`task-item-${t.id}`}
-          >
-            <button
-              onClick={() => toggleTask(t.id, t.status)}
-              className="shrink-0"
-              aria-label={`Mark task ${t.title} as complete`}
-              data-testid={`button-toggle-task-${t.id}`}
-            >
-              <Circle className="h-4 w-4 text-muted-foreground hover:text-primary transition-colors" />
-            </button>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium">{t.title}</p>
-              <span
-                className={`text-[10px] capitalize ${priorityColors[t.priority] || ""}`}
-              >
-                {t.priority}
-              </span>
-            </div>
-            <button
-              onClick={() => deleteTask(t.id)}
-              className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all"
-              aria-label={`Delete task ${t.title}`}
-              data-testid={`button-delete-task-${t.id}`}
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        ))}
-      </div>
-
-      {doneTasks.length > 0 && (
+      {view === "kanban" ? (
+        <KanbanBoard
+          tasks={(tasks || []) as Task[]}
+          onStatusChange={handleStatusChange}
+        />
+      ) : (
         <>
-          <p className="text-xs text-muted-foreground mb-2 font-semibold uppercase tracking-wider">
-            Completed ({doneTasks.length})
-          </p>
-          <div className="space-y-1.5">
-            {doneTasks.map((t: any) => (
+          <div className="space-y-1.5 mb-8">
+            {todoTasks.map((t: any) => (
               <div
                 key={t.id}
-                className="bg-card/20 border border-white/[0.02] rounded-xl px-4 py-3 flex items-center gap-3 group"
+                className="bg-card/40 border border-white/[0.04] rounded-xl px-4 py-3 flex items-center gap-3 group hover:border-white/[0.08] transition-colors"
                 data-testid={`task-item-${t.id}`}
               >
                 <button
                   onClick={() => toggleTask(t.id, t.status)}
                   className="shrink-0"
-                  aria-label={`Mark task ${t.title} as incomplete`}
+                  aria-label={`Mark task ${t.title} as complete`}
                   data-testid={`button-toggle-task-${t.id}`}
                 >
-                  <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                  <Circle className="h-4 w-4 text-muted-foreground hover:text-primary transition-colors" />
                 </button>
-                <p className="text-xs text-muted-foreground line-through flex-1">
-                  {t.title}
-                </p>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium">{t.title}</p>
+                  <span
+                    className={`text-[10px] capitalize ${priorityColors[t.priority] || ""}`}
+                  >
+                    {t.priority}
+                  </span>
+                </div>
                 <button
                   onClick={() => deleteTask(t.id)}
                   className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all"
@@ -180,8 +205,45 @@ export default function TasksPage() {
               </div>
             ))}
           </div>
+
+          {doneTasks.length > 0 && (
+            <>
+              <p className="text-xs text-muted-foreground mb-2 font-semibold uppercase tracking-wider">
+                Completed ({doneTasks.length})
+              </p>
+              <div className="space-y-1.5">
+                {doneTasks.map((t: any) => (
+                  <div
+                    key={t.id}
+                    className="bg-card/20 border border-white/[0.02] rounded-xl px-4 py-3 flex items-center gap-3 group"
+                    data-testid={`task-item-${t.id}`}
+                  >
+                    <button
+                      onClick={() => toggleTask(t.id, t.status)}
+                      className="shrink-0"
+                      aria-label={`Mark task ${t.title} as incomplete`}
+                      data-testid={`button-toggle-task-${t.id}`}
+                    >
+                      <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                    </button>
+                    <p className="text-xs text-muted-foreground line-through flex-1">
+                      {t.title}
+                    </p>
+                    <button
+                      onClick={() => deleteTask(t.id)}
+                      className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all"
+                      aria-label={`Delete task ${t.title}`}
+                      data-testid={`button-delete-task-${t.id}`}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </>
       )}
-    </div>
+    </AnimatedMount>
   );
 }

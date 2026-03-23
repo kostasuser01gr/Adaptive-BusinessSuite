@@ -1,5 +1,6 @@
 import { EventEmitter } from "node:events";
 import { storage } from "./storage";
+import { wsManager } from "./services/websocket";
 
 export const eventBus = new EventEmitter();
 
@@ -103,3 +104,19 @@ eventBus.on(EventTypes.ENTITY_CREATED, async (event) => {
     }
   }
 });
+
+// 4. WebSocket Broadcast Subscriber — push entity events to connected clients
+for (const eventType of [
+  EventTypes.ENTITY_CREATED,
+  EventTypes.ENTITY_UPDATED,
+  EventTypes.ENTITY_DELETED,
+]) {
+  eventBus.on(eventType, (event) => {
+    const wsEvent = `entity:${eventType.split("_")[1]?.toLowerCase() || "change"}`;
+    wsManager.broadcast(event.userId, wsEvent, {
+      entityType: event.payload.entityType,
+      entityId: event.payload.entityId,
+      data: event.payload.data,
+    });
+  });
+}

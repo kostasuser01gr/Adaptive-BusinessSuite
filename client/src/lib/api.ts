@@ -248,4 +248,55 @@ export const api = {
   nexusUltra: {
     get: () => fetchAPI("/api/nexus-ultra"),
   },
+  analytics: {
+    financial: () => fetchAPI("/api/analytics/financial"),
+    historical: (days = 30) =>
+      fetchAPI(`/api/analytics/historical?days=${days}`),
+    revenue: (start?: string, end?: string, granularity?: string) => {
+      const params = new URLSearchParams();
+      if (start) params.set("start", start);
+      if (end) params.set("end", end);
+      if (granularity) params.set("granularity", granularity);
+      return fetchAPI(`/api/analytics/revenue?${params.toString()}`);
+    },
+    fleetUtilization: (start?: string, end?: string) => {
+      const params = new URLSearchParams();
+      if (start) params.set("start", start);
+      if (end) params.set("end", end);
+      return fetchAPI(`/api/analytics/fleet-utilization?${params.toString()}`);
+    },
+    demandForecast: () => fetchAPI("/api/analytics/demand-forecast"),
+    customerLtv: () => fetchAPI("/api/analytics/customer-ltv"),
+    metrics: () => fetchAPI("/api/analytics/metrics"),
+    anomalies: () => fetchAPI("/api/analytics/anomalies"),
+  },
+  admin: {
+    queryStats: () => fetchAPI("/api/admin/query-stats"),
+    jobStatus: () => fetchAPI("/api/admin/jobs/status"),
+  },
+  audit: {
+    export: (format = "csv", since?: string, until?: string) => {
+      const params = new URLSearchParams({ format });
+      if (since) params.set("since", since);
+      if (until) params.set("until", until);
+      return fetchAPI(`/api/audit/export?${params.toString()}`);
+    },
+    log: () => fetchAPI("/api/audit-log"),
+  },
+  apiKeys: {
+    list: () => fetchAPI("/api/api-keys"),
+    create: (data: { name: string; expiresInDays?: number }) =>
+      fetchAPI("/api/api-keys", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    remove: (id: string) =>
+      fetchAPI(`/api/api-keys/${id}`, { method: "DELETE" }),
+  },
+  sessions: {
+    list: () => fetchAPI("/api/sessions"),
+    revoke: (id: string) =>
+      fetchAPI(`/api/sessions/${id}`, { method: "DELETE" }),
+    revokeAll: () => fetchAPI("/api/sessions", { method: "DELETE" }),
+  },
 };

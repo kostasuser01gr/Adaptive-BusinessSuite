@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { AnimatedMount } from "@/components/animation/AnimatedMount";
 import { Button } from "@/components/ui/button";
 import { Plus, Wrench, CheckCircle2 } from "lucide-react";
 
@@ -71,7 +72,7 @@ export default function MaintenancePage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <AnimatedMount className="max-w-4xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl font-heading font-bold">Maintenance</h1>
@@ -209,6 +210,6 @@ export default function MaintenancePage() {
           ))}
         </div>
       )}
-    </div>
+    </AnimatedMount>
   );
 }

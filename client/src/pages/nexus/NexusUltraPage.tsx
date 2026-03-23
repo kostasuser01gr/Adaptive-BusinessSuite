@@ -1,6 +1,7 @@
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { AnimatedMount } from "@/components/animation/AnimatedMount";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -159,7 +160,7 @@ export default function NexusUltraPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
+    <AnimatedMount className="max-w-7xl mx-auto space-y-6">
       <section className="relative overflow-hidden rounded-[28px] border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.18),transparent_32%),radial-gradient(circle_at_80%_20%,rgba(16,185,129,0.14),transparent_26%),linear-gradient(145deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))] p-6 md:p-8">
         <div className="absolute inset-y-0 right-0 hidden w-1/3 bg-[linear-gradient(135deg,transparent,rgba(255,255,255,0.06))] md:block" />
         <div className="relative flex flex-col gap-6">
@@ -623,6 +624,6 @@ export default function NexusUltraPage() {
           </CardContent>
         </Card>
       </section>
-    </div>
+    </AnimatedMount>
   );
 }

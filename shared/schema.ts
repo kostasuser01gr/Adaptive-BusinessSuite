@@ -376,3 +376,85 @@ export const insertInspectionSchema = createInsertSchema(inspections).omit({
 });
 export type InsertInspection = z.infer<typeof insertInspectionSchema>;
 export type Inspection = typeof inspections.$inferSelect;
+
+// --- Files / Uploads ---
+export const files = pgTable("files", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  workspaceId: varchar("workspace_id"),
+  entityType: text("entity_type"), // vehicle, booking, inspection, etc.
+  entityId: varchar("entity_id"),
+  filename: text("filename").notNull(),
+  originalName: text("original_name").notNull(),
+  mimeType: text("mime_type").notNull(),
+  sizeBytes: integer("size_bytes").notNull(),
+  url: text("url").notNull(),
+  ...syncMetadata,
+});
+export type FileRecord = typeof files.$inferSelect;
+
+// --- Webhooks ---
+export const webhooks = pgTable("webhooks", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  workspaceId: varchar("workspace_id"),
+  url: text("url").notNull(),
+  events: jsonb("events").$type<string[]>().notNull(),
+  secret: text("secret").notNull(),
+  enabled: boolean("enabled").notNull().default(true),
+  lastDeliveryAt: timestamp("last_delivery_at"),
+  lastStatus: integer("last_status"),
+  ...syncMetadata,
+});
+export type Webhook = typeof webhooks.$inferSelect;
+
+// --- Saved Views ---
+export const savedViews = pgTable("saved_views", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  name: text("name").notNull(),
+  entityType: text("entity_type").notNull(),
+  filters: jsonb("filters"),
+  sortBy: text("sort_by"),
+  columns: jsonb("columns"),
+  ...syncMetadata,
+});
+export type SavedView = typeof savedViews.$inferSelect;
+
+// --- API Keys ---
+export const apiKeys = pgTable("api_keys", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  name: text("name").notNull(),
+  keyHash: text("key_hash").notNull(),
+  prefix: text("prefix").notNull(),
+  permissions: jsonb("permissions").$type<string[]>(),
+  expiresAt: timestamp("expires_at").notNull(),
+  lastUsedAt: timestamp("last_used_at"),
+  ...syncMetadata,
+});
+export type ApiKey = typeof apiKeys.$inferSelect;
+
+// --- Audit Log (enhanced) ---
+export const auditLog = pgTable("audit_log", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  action: text("action").notNull(),
+  resource: text("resource"),
+  resourceId: varchar("resource_id"),
+  ip: text("ip"),
+  userAgent: text("user_agent"),
+  metadata: jsonb("metadata"),
+  ...syncMetadata,
+});
+export type AuditLogEntry = typeof auditLog.$inferSelect;

@@ -3,6 +3,7 @@
  */
 
 import { getWorkspaceContext } from "./rag";
+import { claudeAI } from "../services/claude-ai-service";
 
 export interface AssistantContext {
   userId: string;
@@ -240,6 +241,33 @@ export async function processMessage(
 ): Promise<AssistantResult> {
   const provider = (process.env.AI_PROVIDER || "none").toLowerCase();
 
+  const systemContent =
+    SYSTEM_PROMPT +
+    (source === "voice"
+      ? "\nNOTE: User is speaking via voice. Keep textual response under 10 words."
+      : "");
+
+  // Claude provider
+  if (provider === "claude" && claudeAI.isConfigured) {
+    try {
+      const workspaceContext = await getWorkspaceContext(
+        context.userId,
+        command,
+      );
+      const systemPrompt = workspaceContext
+        ? `${systemContent}\n\n${workspaceContext}`
+        : systemContent;
+
+      const raw = await claudeAI.chat(systemPrompt, [
+        { role: "user", content: command },
+      ]);
+      return parseOpenAIResponse(raw);
+    } catch (err) {
+      console.error("[model-gateway] Claude call failed:", err);
+    }
+  }
+
+  // OpenAI provider
   if (provider === "openai" && process.env.OPENAI_API_KEY) {
     try {
       const workspaceContext = await getWorkspaceContext(
@@ -247,14 +275,7 @@ export async function processMessage(
         command,
       );
       const messages = [
-        {
-          role: "system",
-          content:
-            SYSTEM_PROMPT +
-            (source === "voice"
-              ? "\nNOTE: User is speaking via voice. Keep textual response under 10 words."
-              : ""),
-        },
+        { role: "system", content: systemContent },
         { role: "system", content: workspaceContext },
         { role: "user", content: command },
       ];

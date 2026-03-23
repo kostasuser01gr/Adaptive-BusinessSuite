@@ -1,13 +1,22 @@
 import React from "react";
+import { motion } from "framer-motion";
+import { useQuery } from "@tanstack/react-query";
 import { useAppState } from "@/lib/store";
 import ModuleRenderer from "@/components/modules/ModuleRenderer";
-import { Bot, Plus, Lightbulb, ArrowRight } from "lucide-react";
+import { ActivityTimeline } from "@/components/timeline/ActivityTimeline";
+import { Bot, Plus, Lightbulb, ArrowRight, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
+import { AnimatedMount } from "@/components/animation/AnimatedMount";
+import { api } from "@/lib/api";
 
 export default function DashboardPage() {
   const { mode, modules, toggleChat, suggestions } = useAppState();
   const [, setLocation] = useLocation();
+  const { data: actions } = useQuery({
+    queryKey: ["/api/actions"],
+    queryFn: api.actions,
+  });
 
   const modeLabels: Record<string, string> = {
     rental: "Rental Operations",
@@ -17,7 +26,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto">
+    <AnimatedMount className="max-w-7xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-6 gap-3">
         <div>
           <h1
@@ -87,17 +96,57 @@ export default function DashboardPage() {
           </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 auto-rows-[140px]">
+        <motion.div
+          className="grid grid-cols-2 md:grid-cols-4 gap-3 auto-rows-[140px]"
+          initial="initial"
+          animate="animate"
+          variants={{
+            animate: { transition: { staggerChildren: 0.06 } },
+          }}
+        >
           {modules.map((mod) => (
-            <div
+            <motion.div
               key={mod.id}
+              variants={{
+                initial: { opacity: 0, y: 20, scale: 0.95 },
+                animate: {
+                  opacity: 1,
+                  y: 0,
+                  scale: 1,
+                  transition: { type: "spring", stiffness: 400, damping: 30 },
+                },
+              }}
+              whileHover={{ y: -2, transition: { type: "spring", stiffness: 400, damping: 30 } }}
               className={`${mod.w >= 4 ? "col-span-2 md:col-span-4" : mod.w >= 2 ? "col-span-2" : "col-span-1"} ${mod.h >= 2 ? "row-span-2" : "row-span-1"}`}
             >
               <ModuleRenderer module={mod} />
-            </div>
+            </motion.div>
           ))}
+        </motion.div>
+      )}
+
+      {/* Recent Activity */}
+      {Array.isArray(actions) && actions.length > 0 && (
+        <div className="mt-6 bg-card/40 border border-white/[0.04] rounded-xl p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <Activity className="h-4 w-4 text-primary" />
+            <h2 className="text-sm font-heading font-semibold">
+              Recent Activity
+            </h2>
+          </div>
+          <ActivityTimeline
+            events={actions.slice(0, 8).map((a: any) => ({
+              id: a.id,
+              type: a.actionType || "update",
+              description: a.description || `${a.actionType} on ${a.entityType}`,
+              entityType: a.entityType,
+              timestamp: a.createdAt,
+              actorType: a.actorType,
+            }))}
+            maxItems={8}
+          />
         </div>
       )}
-    </div>
+    </AnimatedMount>
   );
 }

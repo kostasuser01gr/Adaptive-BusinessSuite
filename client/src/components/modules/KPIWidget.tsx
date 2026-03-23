@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { ModuleConfig, useAppState } from "@/lib/store";
 import { WidgetWrapper } from "./GenericWidget";
+import { AnimatedCounter } from "@/components/animation/AnimatedCounter";
 import {
   TrendingUp,
   Car,
@@ -58,11 +59,26 @@ export default function KPIWidget({ module }: { module: ModuleConfig }) {
     label = "Total contacts";
   }
 
+  const numericValue = useMemo(() => {
+    const stripped = value.replace(/[^0-9.]/g, "");
+    return parseFloat(stripped) || 0;
+  }, [value]);
+
+  const prefix = value.match(/^[^0-9]*/)?.[0] || "";
+  const suffix = value.match(/[^0-9]*$/)?.[0] || "";
+
   return (
     <WidgetWrapper module={module}>
       <div className="flex items-start justify-between h-full">
         <div className="flex flex-col justify-center h-full">
-          <div className="text-2xl font-heading font-bold mb-0.5">{value}</div>
+          <div className="text-2xl font-heading font-bold mb-0.5">
+            <AnimatedCounter
+              value={numericValue}
+              prefix={prefix}
+              suffix={suffix}
+              duration={1200}
+            />
+          </div>
           <div className="flex items-center text-xs text-muted-foreground font-medium">
             <TrendingUp className="h-3 w-3 mr-1 text-emerald-400" />
             {label}

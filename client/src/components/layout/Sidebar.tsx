@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { useAppState } from "@/lib/store";
 import {
   CarFront,
@@ -98,23 +99,31 @@ export default function Sidebar() {
               className={`h-3 w-3 text-muted-foreground transition-transform ${modeMenuOpen ? "rotate-180" : ""}`}
             />
           </button>
-          {modeMenuOpen && (
-            <div className="absolute bottom-full left-0 right-0 mb-1 glass-card rounded-lg border border-white/10 p-1 shadow-xl z-50">
-              {Object.values(ontologies).map((ont) => (
-                <button
-                  key={ont.id}
-                  onClick={() => {
-                    setMode(ont.id as any);
-                    setModeMenuOpen(false);
-                  }}
-                  className={`w-full text-left px-3 py-2 rounded-md text-xs transition-colors ${mode === ont.id ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-white/5 hover:text-foreground"}`}
-                  data-testid={`button-mode-${ont.id}`}
-                >
-                  {ont.label}
-                </button>
-              ))}
-            </div>
-          )}
+          <AnimatePresence>
+            {modeMenuOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                className="absolute bottom-full left-0 right-0 mb-1 glass-card rounded-lg border border-white/10 p-1 shadow-xl z-50"
+              >
+                {Object.values(ontologies).map((ont) => (
+                  <button
+                    key={ont.id}
+                    onClick={() => {
+                      setMode(ont.id as any);
+                      setModeMenuOpen(false);
+                    }}
+                    className={`w-full text-left px-3 py-2 rounded-md text-xs transition-colors ${mode === ont.id ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-white/5 hover:text-foreground"}`}
+                    data-testid={`button-mode-${ont.id}`}
+                  >
+                    {ont.label}
+                  </button>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         <Button
@@ -156,12 +165,18 @@ export default function Sidebar() {
       >
         <Menu className="h-4 w-4" />
       </button>
-      {mobileOpen && (
-        <div
-          className="lg:hidden fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
-          onClick={() => setMobileOpen(false)}
-        />
-      )}
+      <AnimatePresence>
+        {mobileOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="lg:hidden fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
+            onClick={() => setMobileOpen(false)}
+          />
+        )}
+      </AnimatePresence>
       <aside
         className={`w-56 bg-background/80 backdrop-blur-xl border-r border-white/5 flex flex-col fixed lg:static inset-y-0 left-0 z-50 transition-transform duration-200 ${mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}
       >

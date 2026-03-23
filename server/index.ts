@@ -1,9 +1,11 @@
 import express, { type Request, Response, NextFunction } from "express";
+import path from "path";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { checkDatabaseConnection, closeDatabasePool } from "./db";
 import { env, isProduction } from "./config";
+import { wsManager } from "./services/websocket";
 
 const app = express();
 const httpServer = createServer(app);
@@ -64,9 +66,23 @@ app.use(
 
 app.use(express.urlencoded({ extended: false }));
 
+// Security headers
+app.use((_req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader("X-XSS-Protection", "0"); // Modern browsers rely on CSP instead
+  res.setHeader(
+    "Permissions-Policy",
+    "camera=(), microphone=(), geolocation=()",
+  );
+  next();
+});
+
 app.get("/health", async (_req, res) => {
   const dbStatus = await checkDatabaseConnection();
   const healthy = dbStatus.ok;
+  const mem = process.memoryUsage();
 
   res
     .status(healthy ? 200 : 503)
@@ -76,7 +92,14 @@ app.get("/health", async (_req, res) => {
       environment: env.NODE_ENV,
       database: healthy ? "up" : "down",
       aiProvider: env.AI_PROVIDER,
+      websocket: wsManager.getStats(),
       uptimeSeconds: Math.floor((Date.now() - startedAt) / 1000),
+      memory: {
+        rss: Math.round(mem.rss / 1024 / 1024),
+        heapUsed: Math.round(mem.heapUsed / 1024 / 1024),
+        heapTotal: Math.round(mem.heapTotal / 1024 / 1024),
+      },
+      timestamp: new Date().toISOString(),
     });
 });
 
@@ -108,6 +131,8 @@ app.use((req, res, next) => {
 async function shutdown(signal: string) {
   log(`received ${signal}, closing server`, "shutdown");
 
+  wsManager.shutdown();
+
   httpServer.close(async (serverError) => {
     if (serverError) {
       console.error("[shutdown] HTTP server close failed:", serverError);
@@ -136,6 +161,12 @@ async function startServer() {
   if (!dbStatus.ok) {
     throw dbStatus.error;
   }
+
+  // Initialize WebSocket server
+  wsManager.init(httpServer);
+
+  // Serve uploaded files
+  app.use("/uploads", express.static(path.resolve("uploads")));
 
   await registerRoutes(httpServer, app);
 

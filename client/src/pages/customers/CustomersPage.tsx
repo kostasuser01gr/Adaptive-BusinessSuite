@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { AnimatedMount } from "@/components/animation/AnimatedMount";
 import { Button } from "@/components/ui/button";
 import { Plus, Users, Trash2, MoreVertical, Search } from "lucide-react";
 import {
@@ -115,7 +116,7 @@ export default function CustomersPage() {
   );
 
   return (
-    <div className="max-w-5xl mx-auto">
+    <AnimatedMount className="max-w-5xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-3">
         <div>
           <h1
@@ -210,6 +211,6 @@ export default function CustomersPage() {
           ))}
         </div>
       )}
-    </div>
+    </AnimatedMount>
   );
 }

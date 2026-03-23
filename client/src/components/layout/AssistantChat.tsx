@@ -123,6 +123,14 @@ export default function AssistantChat() {
               }`}
             >
               <p className="whitespace-pre-wrap">{msg.content}</p>
+              {msg.timestamp && (
+                <p className="text-[9px] opacity-40 mt-1.5">
+                  {new Date(msg.timestamp).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </p>
+              )}
 
               {msg.generativeUI && (
                 <div className="mt-3">
@@ -246,9 +254,14 @@ export default function AssistantChat() {
         )}
 
         {sending && (
-          <div className="flex justify-start">
-            <div className="bg-muted/30 rounded-2xl rounded-tl-sm p-3 border border-white/5">
-              <Loader2 className="h-4 w-4 animate-spin text-primary" />
+          <div className="flex justify-start animate-in fade-in slide-in-from-bottom-2 duration-200">
+            <div className="bg-muted/30 rounded-2xl rounded-tl-sm px-4 py-3 border border-white/5 flex items-center gap-2">
+              <div className="flex gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: "0ms" }} />
+                <span className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: "150ms" }} />
+                <span className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: "300ms" }} />
+              </div>
+              <span className="text-[10px] text-muted-foreground">Thinking...</span>
             </div>
           </div>
         )}

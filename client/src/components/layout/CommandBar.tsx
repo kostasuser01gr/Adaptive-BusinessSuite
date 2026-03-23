@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { useAppState } from "@/lib/store";
 import { useLocation } from "wouter";
 import {
@@ -141,6 +142,62 @@ export default function CommandBar() {
     },
 
     {
+      id: "customers",
+      label: "Customers",
+      description: "Manage customer records",
+      icon: <Users className="h-4 w-4" />,
+      action: () => {
+        setLocation("/customers");
+        setCommandBarOpen(false);
+      },
+      category: "Navigation",
+    },
+    {
+      id: "notes",
+      label: "Notes",
+      description: "Quick notes & docs",
+      icon: <FileText className="h-4 w-4" />,
+      action: () => {
+        setLocation("/notes");
+        setCommandBarOpen(false);
+      },
+      category: "Navigation",
+    },
+    {
+      id: "maintenance",
+      label: "Maintenance",
+      description: "Service & repairs",
+      icon: <Wrench className="h-4 w-4" />,
+      action: () => {
+        setLocation("/maintenance");
+        setCommandBarOpen(false);
+      },
+      category: "Navigation",
+    },
+    {
+      id: "financial",
+      label: "Financial Dashboard",
+      description: "Revenue, expenses & analytics",
+      icon: <TrendingUp className="h-4 w-4" />,
+      action: () => {
+        setLocation("/financial");
+        setCommandBarOpen(false);
+      },
+      category: "Navigation",
+    },
+    {
+      id: "nexus",
+      label: "Nexus Ultra",
+      description: "Enterprise compliance & governance",
+      icon: <ShieldCheck className="h-4 w-4" />,
+      action: () => {
+        setLocation("/nexus-ultra");
+        setCommandBarOpen(false);
+      },
+      category: "Navigation",
+    },
+
+    {
       id: "assistant",
       label: "Open Assistant",
       description: "Chat with Nexus AI",
@@ -154,6 +211,7 @@ export default function CommandBar() {
     {
       id: "clear",
       label: "Clear Dashboard",
+      description: "Reset dashboard modules",
       icon: <Sparkles className="h-4 w-4" />,
       action: () => {
         processCommand("clear dashboard");
@@ -185,16 +243,24 @@ export default function CommandBar() {
     }
   };
 
-  if (!isCommandBarOpen) return null;
-
   return (
-    <div
+    <AnimatePresence>
+      {isCommandBarOpen && (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
       className="fixed inset-0 z-[100] flex items-start justify-center pt-[15vh]"
       onClick={() => setCommandBarOpen(false)}
     >
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-md animate-in fade-in duration-300" />
-      <div
-        className="relative w-full max-w-xl mx-4 glass-card rounded-2xl border border-white/10 shadow-[0_0_50px_-12px_rgba(0,0,0,0.5)] overflow-hidden animate-in zoom-in-95 duration-200"
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-md" />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: -10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: -10 }}
+        transition={{ type: "spring", stiffness: 400, damping: 30 }}
+        className="relative w-full max-w-xl mx-4 glass-card rounded-2xl border border-white/10 shadow-[0_0_50px_-12px_rgba(0,0,0,0.5)] overflow-hidden"
         onClick={(e) => e.stopPropagation()}
         data-testid="command-bar"
       >
@@ -275,7 +341,9 @@ export default function CommandBar() {
             v14.0-ULTRA
           </span>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

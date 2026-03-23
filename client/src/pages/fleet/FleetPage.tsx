@@ -1,14 +1,19 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { AnimatedMount } from "@/components/animation/AnimatedMount";
+import { DataTable } from "@/components/data-table/DataTable";
 import { Button } from "@/components/ui/button";
-import { Plus, Car, MoreVertical, Trash2, Edit, Search } from "lucide-react";
+import { Plus, Car, MoreVertical, Trash2, LayoutGrid, Table2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import type { ColumnDef } from "@tanstack/react-table";
+
+type ViewMode = "cards" | "table";
 
 function AddVehicleForm({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient();
@@ -109,26 +114,20 @@ function AddVehicleForm({ onClose }: { onClose: () => void }) {
   );
 }
 
+const statusColors: Record<string, string> = {
+  available: "bg-emerald-400/10 text-emerald-400 border-emerald-400/20",
+  rented: "bg-blue-400/10 text-blue-400 border-blue-400/20",
+  maintenance: "bg-amber-400/10 text-amber-400 border-amber-400/20",
+};
+
 export default function FleetPage() {
   const qc = useQueryClient();
-  const { data: vehicles, isLoading } = useQuery({
+  const { data: vehicles } = useQuery({
     queryKey: ["/api/vehicles"],
     queryFn: api.vehicles.list,
   });
   const [showAdd, setShowAdd] = useState(false);
-  const [search, setSearch] = useState("");
-
-  const filtered = (vehicles || []).filter((v: any) =>
-    `${v.make} ${v.model} ${v.plate}`
-      .toLowerCase()
-      .includes(search.toLowerCase()),
-  );
-
-  const statusColors: Record<string, string> = {
-    available: "bg-emerald-400/10 text-emerald-400 border-emerald-400/20",
-    rented: "bg-blue-400/10 text-blue-400 border-blue-400/20",
-    maintenance: "bg-amber-400/10 text-amber-400 border-amber-400/20",
-  };
+  const [view, setView] = useState<ViewMode>("cards");
 
   const deleteVehicle = async (id: string) => {
     await api.vehicles.remove(id);
@@ -148,8 +147,90 @@ export default function FleetPage() {
     qc.invalidateQueries({ queryKey: ["/api/stats"] });
   };
 
+  const columns = useMemo<ColumnDef<any, any>[]>(
+    () => [
+      {
+        accessorKey: "make",
+        header: "Make",
+        cell: ({ row }) => (
+          <span className="font-medium">{row.original.make}</span>
+        ),
+      },
+      {
+        accessorKey: "model",
+        header: "Model",
+      },
+      {
+        accessorKey: "plate",
+        header: "Plate",
+        cell: ({ row }) => row.original.plate || "—",
+      },
+      {
+        accessorKey: "category",
+        header: "Category",
+        cell: ({ row }) => (
+          <span className="capitalize">{row.original.category || "sedan"}</span>
+        ),
+      },
+      {
+        accessorKey: "dailyRate",
+        header: "Rate",
+        cell: ({ row }) =>
+          row.original.dailyRate ? `€${row.original.dailyRate}/day` : "—",
+      },
+      {
+        accessorKey: "status",
+        header: "Status",
+        cell: ({ row }) => (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleStatus(row.original.id, row.original.status);
+            }}
+            className={`px-2 py-1 rounded-md text-[10px] font-medium capitalize border cursor-pointer ${statusColors[row.original.status] || statusColors.available}`}
+          >
+            {row.original.status}
+          </button>
+        ),
+      },
+      {
+        id: "actions",
+        enableSorting: false,
+        enableHiding: false,
+        size: 50,
+        cell: ({ row }) => (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                aria-label={`Vehicle actions for ${row.original.make} ${row.original.model}`}
+              >
+                <MoreVertical className="h-3.5 w-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              className="bg-popover border-white/10"
+            >
+              <DropdownMenuItem
+                className="text-destructive text-xs cursor-pointer"
+                onClick={() => deleteVehicle(row.original.id)}
+              >
+                <Trash2 className="mr-2 h-3 w-3" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ),
+      },
+    ],
+    [],
+  );
+
   return (
-    <div className="max-w-5xl mx-auto">
+    <AnimatedMount className="max-w-5xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-3">
         <div>
           <h1
@@ -162,103 +243,128 @@ export default function FleetPage() {
             {vehicles?.length || 0} vehicles in your fleet
           </p>
         </div>
-        <Button
-          onClick={() => setShowAdd(true)}
-          size="sm"
-          className="text-xs gap-1.5"
-          data-testid="button-add-vehicle"
-        >
-          <Plus className="h-3.5 w-3.5" />
-          Add Vehicle
-        </Button>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 rounded-lg border border-white/[0.06] bg-card/40 p-0.5">
+            <button
+              onClick={() => setView("cards")}
+              className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] font-medium transition-colors ${
+                view === "cards"
+                  ? "bg-primary/15 text-primary"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+              aria-label="Card view"
+            >
+              <LayoutGrid className="h-3.5 w-3.5" />
+              Cards
+            </button>
+            <button
+              onClick={() => setView("table")}
+              className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] font-medium transition-colors ${
+                view === "table"
+                  ? "bg-primary/15 text-primary"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+              aria-label="Table view"
+            >
+              <Table2 className="h-3.5 w-3.5" />
+              Table
+            </button>
+          </div>
+          <Button
+            onClick={() => setShowAdd(true)}
+            size="sm"
+            className="text-xs gap-1.5"
+            data-testid="button-add-vehicle"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Add Vehicle
+          </Button>
+        </div>
       </div>
 
       {showAdd && <AddVehicleForm onClose={() => setShowAdd(false)} />}
 
-      <div className="flex items-center gap-2 mb-4">
-        <div className="flex-1 relative">
-          <Search className="h-3.5 w-3.5 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search vehicles..."
-            className="w-full bg-card/40 border border-white/[0.06] rounded-lg py-2 pl-9 pr-3 text-xs focus:outline-none focus:ring-1 focus:ring-primary/30"
-            data-testid="input-search-vehicles"
-          />
-        </div>
-      </div>
-
-      {filtered.length === 0 ? (
-        <div className="text-center py-16">
-          <Car className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-          <p className="text-sm text-muted-foreground mb-1">
-            No vehicles found
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Add your first vehicle to get started.
-          </p>
-        </div>
+      {view === "table" ? (
+        <DataTable
+          columns={columns}
+          data={vehicles || []}
+          searchPlaceholder="Search vehicles..."
+          enableRowSelection
+        />
       ) : (
-        <div className="grid gap-3">
-          {filtered.map((v: any) => (
-            <div
-              key={v.id}
-              className="bg-card/40 border border-white/[0.04] rounded-xl p-4 flex items-center justify-between hover:border-white/[0.08] transition-colors group"
-              data-testid={`vehicle-card-${v.id}`}
-            >
-              <div className="flex items-center gap-4 min-w-0">
-                <div className="w-10 h-10 rounded-xl bg-blue-400/10 flex items-center justify-center shrink-0">
-                  <Car className="h-5 w-5 text-blue-400" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-medium">
-                    {v.make} {v.model} {v.year ? `(${v.year})` : ""}
-                  </p>
-                  <p className="text-[11px] text-muted-foreground">
-                    {v.plate || "No plate"} · {v.category || "sedan"}{" "}
-                    {v.dailyRate ? `· €${v.dailyRate}/day` : ""}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  onClick={() => toggleStatus(v.id, v.status)}
-                  className={`px-2 py-1 rounded-md text-[10px] font-medium capitalize border cursor-pointer ${statusColors[v.status] || statusColors.available}`}
-                  data-testid={`vehicle-status-${v.id}`}
-                >
-                  {v.status}
-                </button>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 opacity-0 group-hover:opacity-100"
-                      aria-label={`Vehicle actions for ${v.make} ${v.model}`}
-                      data-testid={`button-vehicle-menu-${v.id}`}
-                    >
-                      <MoreVertical className="h-3.5 w-3.5" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent
-                    align="end"
-                    className="bg-popover border-white/10"
-                  >
-                    <DropdownMenuItem
-                      className="text-destructive text-xs cursor-pointer"
-                      onClick={() => deleteVehicle(v.id)}
-                    >
-                      <Trash2 className="mr-2 h-3 w-3" />
-                      Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
+        <>
+          {(!vehicles || vehicles.length === 0) ? (
+            <div className="text-center py-16">
+              <Car className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+              <p className="text-sm text-muted-foreground mb-1">
+                No vehicles found
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Add your first vehicle to get started.
+              </p>
             </div>
-          ))}
-        </div>
+          ) : (
+            <div className="grid gap-3">
+              {(vehicles || []).map((v: any) => (
+                <div
+                  key={v.id}
+                  className="bg-card/40 border border-white/[0.04] rounded-xl p-4 flex items-center justify-between hover:border-white/[0.08] transition-colors group"
+                  data-testid={`vehicle-card-${v.id}`}
+                >
+                  <div className="flex items-center gap-4 min-w-0">
+                    <div className="w-10 h-10 rounded-xl bg-blue-400/10 flex items-center justify-center shrink-0">
+                      <Car className="h-5 w-5 text-blue-400" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">
+                        {v.make} {v.model} {v.year ? `(${v.year})` : ""}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {v.plate || "No plate"} · {v.category || "sedan"}{" "}
+                        {v.dailyRate ? `· €${v.dailyRate}/day` : ""}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => toggleStatus(v.id, v.status)}
+                      className={`px-2 py-1 rounded-md text-[10px] font-medium capitalize border cursor-pointer ${statusColors[v.status] || statusColors.available}`}
+                      data-testid={`vehicle-status-${v.id}`}
+                    >
+                      {v.status}
+                    </button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 opacity-0 group-hover:opacity-100"
+                          aria-label={`Vehicle actions for ${v.make} ${v.model}`}
+                          data-testid={`button-vehicle-menu-${v.id}`}
+                        >
+                          <MoreVertical className="h-3.5 w-3.5" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent
+                        align="end"
+                        className="bg-popover border-white/10"
+                      >
+                        <DropdownMenuItem
+                          className="text-destructive text-xs cursor-pointer"
+                          onClick={() => deleteVehicle(v.id)}
+                        >
+                          <Trash2 className="mr-2 h-3 w-3" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
       )}
-    </div>
+    </AnimatedMount>
   );
 }

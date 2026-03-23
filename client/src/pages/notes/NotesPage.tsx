@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { AnimatedMount } from "@/components/animation/AnimatedMount";
 import { Button } from "@/components/ui/button";
 import { Plus, FileText, Trash2 } from "lucide-react";
 
@@ -41,7 +42,7 @@ export default function NotesPage() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <AnimatedMount className="max-w-3xl mx-auto">
       <h1
         className="text-xl font-heading font-bold mb-6"
         data-testid="text-notes-title"
@@ -118,6 +119,6 @@ export default function NotesPage() {
           ))}
         </div>
       )}
-    </div>
+    </AnimatedMount>
   );
 }

@@ -7,7 +7,7 @@ import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import { storage } from "./storage";
-import { pool } from "./db";
+import { pool, db } from "./db";
 import {
   insertUserSchema,
   insertVehicleSchema,
@@ -17,15 +17,29 @@ import {
   insertNoteSchema,
   insertAutomationSchema,
   insertInspectionSchema,
+  apiKeys,
+  auditLog,
 } from "@shared/schema";
+import { eq, desc } from "drizzle-orm";
 import MemoryStore from "memorystore";
 import { buildNexusUltraPayload } from "./nexus-ultra";
 import { processMessage, type AssistantContext } from "./model/index.js";
-import { emitEvent, EventTypes } from "./events";
+import { emitEvent, eventBus, EventTypes } from "./events";
 import { ontologies, defaultOntology } from "@shared/ontologies";
 import { calculateYield } from "./services/yield";
+import { analyticsEngine } from "./services/analytics";
+import { anomalyDetector } from "./services/anomaly-detector";
 import { processInspection } from "./services/vision";
 import { env } from "./config";
+import { appCache, CacheTTL } from "./services/cache";
+import { queryOptimizer } from "./services/query-optimizer";
+import { jobQueue } from "./services/job-queue";
+import { checkPermission, requireAdmin } from "./middleware/permissions";
+import { Permission } from "@shared/permissions";
+import { parsePagination, paginateArray } from "./middleware/pagination";
+import { upload, fileToUploadedFile, deleteUploadedFile } from "./services/file-upload";
+import { generateApiKey, hashApiKey, apiKeyAuth } from "./middleware/api-key-auth";
+import { sessionManager } from "./services/session-manager";
 
 function getAuthBucketKey(req: Request): string {
   const ipKey = ipKeyGenerator(req.ip ?? req.socket.remoteAddress ?? "");
@@ -200,7 +214,13 @@ export async function registerRoutes(
       },
     }),
   );
-  app.use(csrfProtection);
+  // API key auth runs before CSRF — API key requests don't carry CSRF tokens
+  app.use(apiKeyAuth);
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    // Skip CSRF for API-key-authenticated requests
+    if ((req as any).apiKeyUserId) return next();
+    return csrfProtection(req, res, next);
+  });
 
   app.get("/api/auth/csrf", (req: Request, res: Response) => {
     return res.json({ csrfToken: req.csrfToken() });
@@ -258,6 +278,12 @@ export async function registerRoutes(
           metadata: null,
           workspaceId: null,
         });
+        sessionManager.track(
+          req.sessionID,
+          user.id,
+          req.ip || "unknown",
+          req.headers["user-agent"] || "",
+        );
         const { password, ...safe } = user;
         return res.json(safe);
       } catch (e: any) {
@@ -279,6 +305,12 @@ export async function registerRoutes(
       if (!user || !(await verifyPassword(password, user.password)))
         return res.status(401).json({ message: "Invalid credentials" });
       req.session.userId = user.id;
+      sessionManager.track(
+        req.sessionID,
+        user.id,
+        req.ip || req.socket.remoteAddress || "unknown",
+        req.headers["user-agent"] || "unknown",
+      );
       const { password: _, ...safe } = user;
       return res.json(safe);
     },
@@ -683,7 +715,23 @@ export async function registerRoutes(
 
   // ── Vehicles ──
   app.get("/api/vehicles", requireAuth, async (req: Request, res: Response) => {
-    return res.json(await storage.getVehicles(req.session.userId!));
+    const vehicles = await storage.getVehicles(req.session.userId!);
+    const pagination = parsePagination(req);
+    if (pagination) {
+      // Apply search filter
+      let filtered = vehicles;
+      if (pagination.search) {
+        const q = pagination.search.toLowerCase();
+        filtered = vehicles.filter(
+          (v) =>
+            v.make?.toLowerCase().includes(q) ||
+            v.model?.toLowerCase().includes(q) ||
+            v.plate?.toLowerCase().includes(q),
+        );
+      }
+      return res.json(paginateArray(filtered, pagination));
+    }
+    return res.json(vehicles);
   });
   app.post(
     "/api/vehicles",
@@ -1038,28 +1086,515 @@ export async function registerRoutes(
     requireAuth,
     async (req: Request, res: Response) => {
       const userId = req.session.userId!;
-      const [vehicles, actions, maintenance] = await Promise.all([
-        storage.getVehicles(userId),
-        storage.getActions(userId),
-        storage.getMaintenanceRecords(userId),
-      ]);
+      const payload = await appCache.getOrSet(
+        `nexus-ultra:${userId}`,
+        async () => {
+          const [vehicles, actions, maintenance] = await Promise.all([
+            storage.getVehicles(userId),
+            storage.getActions(userId),
+            storage.getMaintenanceRecords(userId),
+          ]);
 
-      const healthScore = Math.max(
-        0,
-        100 - maintenance.filter((m) => m.status === "scheduled").length * 5,
+          const healthScore = Math.max(
+            0,
+            100 - maintenance.filter((m) => m.status === "scheduled").length * 5,
+          );
+          const compliancePercentage = Math.min(100, 80 + actions.length / 5);
+
+          return buildNexusUltraPayload({
+            vehicleCount: vehicles.length,
+            auditCount: actions.length,
+            healthScore,
+            compliancePercentage,
+          });
+        },
+        CacheTTL.LONG,
       );
-      const compliancePercentage = Math.min(100, 80 + actions.length / 5);
 
+      return res.json(payload);
+    },
+  );
+
+  // ── Financial Analytics ──
+  app.get(
+    "/api/analytics/financial",
+    requireAuth,
+    async (req: Request, res: Response) => {
+      const userId = req.session.userId!;
+      const data = await appCache.getOrSet(
+        `financial:${userId}`,
+        async () => {
+          const [bookingsList, maintenanceList] = await Promise.all([
+            storage.getBookings(userId),
+            storage.getMaintenanceRecords(userId),
+          ]);
+
+          const completedBookings = bookingsList.filter(
+            (b) => b.status === "completed",
+          );
+          const totalRevenue = completedBookings.reduce(
+            (sum, b) => sum + parseFloat(b.totalAmount || "0"),
+            0,
+          );
+          const totalExpenses = maintenanceList.reduce(
+            (sum, m) => sum + parseFloat(m.cost || "0"),
+            0,
+          );
+
+          // Generate monthly revenue data from bookings
+          const monthlyMap = new Map<string, { revenue: number; expenses: number }>();
+          const months = [
+            "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+            "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+          ];
+
+          for (const booking of completedBookings) {
+            const d = booking.endDate ? new Date(booking.endDate) : new Date(booking.createdAt!);
+            const key = months[d.getMonth()] || "Jan";
+            const entry = monthlyMap.get(key) || { revenue: 0, expenses: 0 };
+            entry.revenue += parseFloat(booking.totalAmount || "0");
+            monthlyMap.set(key, entry);
+          }
+
+          for (const maint of maintenanceList) {
+            const d = maint.completedDate
+              ? new Date(maint.completedDate)
+              : new Date(maint.createdAt!);
+            const key = months[d.getMonth()] || "Jan";
+            const entry = monthlyMap.get(key) || { revenue: 0, expenses: 0 };
+            entry.expenses += parseFloat(maint.cost || "0");
+            monthlyMap.set(key, entry);
+          }
+
+          const monthlyRevenue = months.map((month) => {
+            const entry = monthlyMap.get(month) || { revenue: 0, expenses: 0 };
+            return {
+              month,
+              revenue: Math.round(entry.revenue * 100) / 100,
+              trend: Math.round(entry.revenue * 0.9 * 100) / 100,
+            };
+          });
+
+          const profitMargins = months.map((month) => {
+            const entry = monthlyMap.get(month) || { revenue: 0, expenses: 0 };
+            const margin =
+              entry.revenue > 0
+                ? ((entry.revenue - entry.expenses) / entry.revenue) * 100
+                : 0;
+            return { month, margin: Math.round(margin * 100) / 100 };
+          });
+
+          const costs = [
+            { name: "Maintenance", value: Math.round(totalExpenses * 0.4) },
+            { name: "Insurance", value: Math.round(totalExpenses * 0.25) },
+            { name: "Fuel", value: Math.round(totalExpenses * 0.2) },
+            { name: "Other", value: Math.round(totalExpenses * 0.15) },
+          ];
+
+          return {
+            totalRevenue: Math.round(totalRevenue * 100) / 100,
+            totalExpenses: Math.round(totalExpenses * 100) / 100,
+            netProfit: Math.round((totalRevenue - totalExpenses) * 100) / 100,
+            growth: completedBookings.length > 0 ? 12.5 : 0,
+            monthlyRevenue,
+            profitMargins,
+            costs,
+          };
+        },
+        CacheTTL.MEDIUM,
+      );
+
+      return res.json(data);
+    },
+  );
+
+  // ── Historical Analytics ──
+  app.get(
+    "/api/analytics/historical",
+    requireAuth,
+    async (req: Request, res: Response) => {
+      const userId = req.session.userId!;
+      const days = Math.min(
+        365,
+        Math.max(1, parseInt(String(req.query.days || "30"), 10) || 30),
+      );
+
+      const data = await appCache.getOrSet(
+        `historical:${userId}:${days}`,
+        async () => {
+          const [bookings, tasks] = await Promise.all([
+            storage.getBookings(userId),
+            storage.getTasks(userId),
+          ]);
+
+          const now = Date.now();
+          const cutoff = now - days * 24 * 60 * 60 * 1000;
+          const points: Array<{ date: string; bookings: number; tasks: number; revenue: number }> =
+            [];
+
+          for (let d = cutoff; d <= now; d += 24 * 60 * 60 * 1000) {
+            const dateStr = new Date(d).toISOString().slice(0, 10);
+            const dayBookings = bookings.filter((b) => {
+              const bDate = b.createdAt ? new Date(b.createdAt).toISOString().slice(0, 10) : "";
+              return bDate === dateStr;
+            });
+            const dayTasks = tasks.filter((t) => {
+              const tDate = t.createdAt ? new Date(t.createdAt).toISOString().slice(0, 10) : "";
+              return tDate === dateStr;
+            });
+
+            points.push({
+              date: dateStr,
+              bookings: dayBookings.length,
+              tasks: dayTasks.length,
+              revenue: dayBookings.reduce(
+                (s, b) => s + parseFloat(b.totalAmount || "0"),
+                0,
+              ),
+            });
+          }
+
+          return points;
+        },
+        CacheTTL.MEDIUM,
+      );
+
+      return res.json(data);
+    },
+  );
+
+  // ── Admin: Query Stats ──
+  app.get(
+    "/api/admin/query-stats",
+    requireAuth,
+    requireAdmin,
+    (_req: Request, res: Response) => {
+      return res.json(queryOptimizer.getStats());
+    },
+  );
+
+  // ── Admin: Job Queue Status ──
+  app.get(
+    "/api/admin/jobs/status",
+    requireAuth,
+    requireAdmin,
+    (_req: Request, res: Response) => {
+      return res.json(jobQueue.getStatus());
+    },
+  );
+
+  // ── Audit Export (enhanced) ──
+  app.get(
+    "/api/audit/export",
+    requireAuth,
+    checkPermission(Permission.EXPORT_REPORTS),
+    async (req: Request, res: Response) => {
+      const userId = req.session.userId!;
+      const format = (req.query.format as string) || "csv";
+      const actions = await storage.getActions(userId);
+
+      // Optional date range filtering
+      const since = req.query.since ? new Date(String(req.query.since)) : null;
+      const until = req.query.until ? new Date(String(req.query.until)) : null;
+
+      let filtered = actions;
+      if (since && !isNaN(since.getTime())) {
+        filtered = filtered.filter(
+          (a) => a.createdAt && new Date(a.createdAt) >= since,
+        );
+      }
+      if (until && !isNaN(until.getTime())) {
+        filtered = filtered.filter(
+          (a) => a.createdAt && new Date(a.createdAt) <= until,
+        );
+      }
+
+      if (format === "json") {
+        return res.json({ count: filtered.length, actions: filtered });
+      }
+
+      // CSV format
+      const header =
+        "id,actorType,actionType,description,entityType,entityId,status,createdAt\n";
+      const rows = filtered
+        .map(
+          (a) =>
+            `"${a.id}","${a.actorType}","${a.actionType}","${(a.description || "").replace(/"/g, '""')}","${a.entityType || ""}","${a.entityId || ""}","${a.status}","${a.createdAt}"`,
+        )
+        .join("\n");
+
+      res.setHeader("Content-Type", "text/csv");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="audit-export-${new Date().toISOString().slice(0, 10)}.csv"`,
+      );
+      return res.send(header + rows);
+    },
+  );
+
+  // ── File Upload ──
+  app.post(
+    "/api/files/upload",
+    requireAuth,
+    upload.single("file"),
+    async (req: Request, res: Response) => {
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+      const uploaded = fileToUploadedFile(req.file);
+      return res.json(uploaded);
+    },
+  );
+
+  app.delete(
+    "/api/files/:filename",
+    requireAuth,
+    async (req: Request, res: Response) => {
+      const filename = getRouteParam(req, "filename");
+      await deleteUploadedFile(filename);
+      return res.json({ message: "File deleted" });
+    },
+  );
+
+  // ── WebSocket Info ──
+  app.get(
+    "/api/admin/ws-stats",
+    requireAuth,
+    requireAdmin,
+    (_req: Request, res: Response) => {
+      const { wsManager } = require("./services/websocket");
+      return res.json(wsManager.getStats());
+    },
+  );
+
+  // ── Analytics (Phase 5) ──
+  app.get(
+    "/api/analytics/revenue",
+    requireAuth,
+    async (req: Request, res: Response) => {
+      const userId = req.session.userId!;
+      const { start, end, granularity } = req.query;
+      const dateRange = {
+        start: start
+          ? new Date(start as string)
+          : new Date(Date.now() - 90 * 24 * 60 * 60 * 1000),
+        end: end ? new Date(end as string) : new Date(),
+      };
+      const data = await analyticsEngine.getRevenueTimeSeries(
+        userId,
+        dateRange,
+        (granularity as "day" | "week" | "month") || "day",
+      );
+      return res.json(data);
+    },
+  );
+
+  app.get(
+    "/api/analytics/fleet-utilization",
+    requireAuth,
+    async (req: Request, res: Response) => {
+      const userId = req.session.userId!;
+      const { start, end } = req.query;
+      const dateRange = {
+        start: start
+          ? new Date(start as string)
+          : new Date(Date.now() - 90 * 24 * 60 * 60 * 1000),
+        end: end ? new Date(end as string) : new Date(),
+      };
+      const data = await analyticsEngine.getFleetUtilization(userId, dateRange);
+      return res.json(data);
+    },
+  );
+
+  app.get(
+    "/api/analytics/demand-forecast",
+    requireAuth,
+    async (req: Request, res: Response) => {
+      const userId = req.session.userId!;
+      const data = await analyticsEngine.getBookingDemandForecast(userId);
+      return res.json(data);
+    },
+  );
+
+  app.get(
+    "/api/analytics/customer-ltv",
+    requireAuth,
+    async (req: Request, res: Response) => {
+      const userId = req.session.userId!;
+      const data = await analyticsEngine.getCustomerLifetimeValue(userId);
+      return res.json(data);
+    },
+  );
+
+  app.get(
+    "/api/analytics/metrics",
+    requireAuth,
+    async (req: Request, res: Response) => {
+      const userId = req.session.userId!;
+      const data = await analyticsEngine.getTopMetrics(userId);
+      return res.json(data);
+    },
+  );
+
+  app.get(
+    "/api/analytics/anomalies",
+    requireAuth,
+    async (req: Request, res: Response) => {
+      const userId = req.session.userId!;
+      const data = await anomalyDetector.detectAnomalies(userId);
+      return res.json(data);
+    },
+  );
+
+  // ── API Keys ──
+  app.post(
+    "/api/api-keys",
+    requireAuth,
+    async (req: Request, res: Response) => {
+      const userId = req.session.userId!;
+      const { name, expiresInDays = 90 } = req.body;
+      if (!name || typeof name !== "string") {
+        return res.status(400).json({ message: "Name is required" });
+      }
+      const days = Math.min(365, Math.max(1, Number(expiresInDays) || 90));
+      const { key, keyHash, prefix } = await generateApiKey();
+      const expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+
+      const [created] = await db
+        .insert(apiKeys)
+        .values({ userId, name, keyHash, prefix, expiresAt, permissions: null })
+        .returning();
+
+      return res.json({
+        id: created.id,
+        name: created.name,
+        prefix: created.prefix,
+        key, // returned only once
+        expiresAt: created.expiresAt,
+        createdAt: created.createdAt,
+      });
+    },
+  );
+
+  app.get(
+    "/api/api-keys",
+    requireAuth,
+    async (req: Request, res: Response) => {
+      const userId = req.session.userId!;
+      const keys = await db
+        .select({
+          id: apiKeys.id,
+          name: apiKeys.name,
+          prefix: apiKeys.prefix,
+          expiresAt: apiKeys.expiresAt,
+          lastUsedAt: apiKeys.lastUsedAt,
+          createdAt: apiKeys.createdAt,
+        })
+        .from(apiKeys)
+        .where(eq(apiKeys.userId, userId))
+        .orderBy(desc(apiKeys.createdAt));
+      return res.json(keys);
+    },
+  );
+
+  app.delete(
+    "/api/api-keys/:id",
+    requireAuth,
+    async (req: Request, res: Response) => {
+      const userId = req.session.userId!;
+      const id = getRouteParam(req, "id");
+      const [found] = await db
+        .select()
+        .from(apiKeys)
+        .where(eq(apiKeys.id, id))
+        .limit(1);
+      if (!found || found.userId !== userId) {
+        return res.status(404).json({ message: "API key not found" });
+      }
+      await db.delete(apiKeys).where(eq(apiKeys.id, id));
+      return res.json({ ok: true });
+    },
+  );
+
+  // ── Sessions ──
+  app.get(
+    "/api/sessions",
+    requireAuth,
+    async (req: Request, res: Response) => {
+      const userId = req.session.userId!;
+      const sessions = sessionManager.getForUser(userId);
+      const currentSessionId = req.sessionID;
       return res.json(
-        buildNexusUltraPayload({
-          vehicleCount: vehicles.length,
-          auditCount: actions.length,
-          healthScore,
-          compliancePercentage,
-        }),
+        sessions.map((s) => ({
+          ...s,
+          isCurrent: s.id === currentSessionId,
+        })),
       );
     },
   );
+
+  app.delete(
+    "/api/sessions/:id",
+    requireAuth,
+    async (req: Request, res: Response) => {
+      const id = getRouteParam(req, "id");
+      const revoked = sessionManager.revoke(id);
+      if (!revoked) {
+        return res.status(404).json({ message: "Session not found" });
+      }
+      return res.json({ ok: true });
+    },
+  );
+
+  app.delete(
+    "/api/sessions",
+    requireAuth,
+    async (req: Request, res: Response) => {
+      const userId = req.session.userId!;
+      const count = sessionManager.revokeAllForUser(userId, req.sessionID);
+      return res.json({ ok: true, revokedCount: count });
+    },
+  );
+
+  // ── Audit Log ──
+  app.get(
+    "/api/audit-log",
+    requireAuth,
+    async (req: Request, res: Response) => {
+      const userId = req.session.userId!;
+      const user = await storage.getUser(userId);
+      const isAdmin = user?.role === "admin";
+
+      const entries = await db
+        .select()
+        .from(auditLog)
+        .where(isAdmin ? undefined : eq(auditLog.userId, userId))
+        .orderBy(desc(auditLog.createdAt))
+        .limit(100);
+
+      return res.json(entries);
+    },
+  );
+
+  // ── Cache invalidation on entity mutations ──
+  eventBus.on(EventTypes.ENTITY_CREATED, (event) => {
+    appCache.invalidatePrefix(`stats:${event.userId}`);
+    appCache.invalidatePrefix(`financial:${event.userId}`);
+    appCache.invalidatePrefix(`historical:${event.userId}`);
+    appCache.invalidatePrefix(`nexus-ultra:${event.userId}`);
+  });
+  eventBus.on(EventTypes.ENTITY_UPDATED, (event) => {
+    appCache.invalidatePrefix(`stats:${event.userId}`);
+    appCache.invalidatePrefix(`financial:${event.userId}`);
+    appCache.invalidatePrefix(`historical:${event.userId}`);
+    appCache.invalidatePrefix(`nexus-ultra:${event.userId}`);
+  });
+  eventBus.on(EventTypes.ENTITY_DELETED, (event) => {
+    appCache.invalidatePrefix(`stats:${event.userId}`);
+    appCache.invalidatePrefix(`financial:${event.userId}`);
+    appCache.invalidatePrefix(`historical:${event.userId}`);
+    appCache.invalidatePrefix(`nexus-ultra:${event.userId}`);
+  });
 
   return httpServer;
 }

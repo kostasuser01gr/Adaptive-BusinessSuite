@@ -8,6 +8,8 @@ import NotificationsSheet from "./NotificationsSheet";
 import InstallAppButton from "./InstallAppButton";
 import { Search, Bell, Loader2, Command } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import Breadcrumbs from "@/components/navigation/Breadcrumbs";
+import ShortcutsPanel from "@/components/shortcuts/ShortcutsPanel";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const {
@@ -99,12 +101,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </header>
 
         <main className="flex-1 overflow-auto p-4 sm:p-6 pb-20 lg:pb-6 relative">
+          <div className="mb-3">
+            <Breadcrumbs />
+          </div>
           {children}
         </main>
       </div>
 
       {isChatOpen && <AssistantChat />}
       <MobileNav />
+      <ShortcutsPanel />
     </div>
   );
 }

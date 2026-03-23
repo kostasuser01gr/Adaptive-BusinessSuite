@@ -33,6 +33,35 @@ export default defineConfig({
           ) {
             return "charts-vendor";
           }
+          if (
+            id.includes("animejs") ||
+            id.includes("@mojs/core") ||
+            id.includes("kute.js") ||
+            id.includes("framer-motion")
+          ) {
+            return "animation-vendor";
+          }
+          if (
+            id.includes("@tanstack/react-table") ||
+            id.includes("@tanstack/react-virtual")
+          ) {
+            return "table-vendor";
+          }
+          if (
+            id.includes("@dnd-kit") ||
+            id.includes("react-grid-layout")
+          ) {
+            return "dnd-vendor";
+          }
+          if (
+            id.includes("@radix-ui") ||
+            id.includes("lucide-react")
+          ) {
+            return "ui-vendor";
+          }
+          if (id.includes("date-fns")) {
+            return "date-vendor";
+          }
           return "app-vendor";
         },
       },
